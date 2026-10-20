@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Impacto Pós-Projeto — PS Júnior</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F4EE;
+    --surface:#FFFFFF;
+    --ink:#1C2333;
+    --ink-soft:#5B6478;
+    --ink-faint:#8A93A6;
+    --line:#E4E0D3;
+    --line-soft:#EDEAE0;
+    --teal:#2C6E63;
+    --teal-dark:#1E4E45;
+    --teal-bg:#E5EFEC;
+    --amber:#B9822E;
+    --amber-bg:#F6ECD8;
+    --rust:#B24E30;
+    --rust-bg:#F5E1D8;
+    --sage-bg:#E4EEE1;
+    --sage:#3E7A44;
+    --shadow: 0 1px 2px rgba(28,35,51,0.06), 0 1px 1px rgba(28,35,51,0.04);
+    --radius: 10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.serif{ font-family:'Fraunces', Georgia, serif; }
+  a{ color:inherit; }
+  button{ font-family:inherit; }
+  ::selection{ background: var(--teal-bg); }
+
+  /* ---------- Layout shell ---------- */
+  .app{ display:flex; min-height:100vh; }
+
+  .sidebar{
+    width:230px; flex:none;
+    background:var(--ink);
+    color:#EDEEF2;
+    display:flex; flex-direction:column;
+    padding:26px 18px;
+    position:sticky; top:0; height:100vh;
+  }
+  .brand{ margin-bottom:30px; }
+  .brand .mark{
+    font-family:'Fraunces', serif; font-weight:600; font-size:20px;
+    color:#fff; letter-spacing:-0.01em; line-height:1.15;
+  }
+  .brand .sub{ font-size:12px; color:#9AA3B8; margin-top:4px; }
+
+  .nav{ display:flex; flex-direction:column; gap:2px; }
+  .nav button{
+    all:unset; cursor:pointer;
+    display:flex; align-items:center; gap:10px;
+    padding:10px 12px; border-radius:8px;
+    font-size:14px; color:#C6CBDA; font-weight:500;
+    transition:background .15s ease, color .15s ease;
+  }
+  .nav button svg{ width:17px; height:17px; flex:none; opacity:.85; }
+  .nav button:hover{ background:rgba(255,255,255,0.06); color:#fff; }
+  .nav button.active{ background:var(--teal); color:#fff; }
+  .nav button.active svg{ opacity:1; }
+
+  .sidebar-footer{ margin-top:auto; padding-top:18px; border-top:1px solid rgba(255,255,255,0.09); }
+  .sidebar-footer .hint{ font-size:11.5px; color:#8890A3; line-height:1.5; margin-bottom:12px; }
+  .ghost-btn{
+    all:unset; cursor:pointer; display:block; width:100%;
+    font-size:12.5px; color:#C6CBDA; padding:7px 0;
+    border-top:1px solid rgba(255,255,255,0.06);
+  }
+  .ghost-btn:hover{ color:#fff; }
+  .ghost-btn:first-child{ border-top:none; }
+  #importFile{ display:none; }
+
+  main{ flex:1; min-width:0; padding:34px 40px 60px; max-width:1180px; }
+
+  .page{ display:none; }
+  .page.active{ display:block; }
+
+  .page-head{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    gap:16px; margin-bottom:26px; flex-wrap:wrap;
+  }
+  .page-head h1{ font-size:26px; font-weight:600; margin:0 0 4px; color:var(--ink); }
+  .page-head .desc{ color:var(--ink-soft); font-size:14px; max-width:520px; }
+
+  .btn{
+    all:unset; cursor:pointer;
+    display:inline-flex; align-items:center; gap:7px;
+    padding:10px 16px; border-radius:8px;
+    font-size:14px; font-weight:600;
+    transition:transform .08s ease, background .15s ease, box-shadow .15s ease;
+  }
+  .btn:active{ transform:translateY(1px); }
+  .btn-primary{ background:var(--teal); color:#fff; box-shadow:var(--shadow); }
+  .btn-primary:hover{ background:var(--teal-dark); }
+  .btn-secondary{ background:var(--surface); color:var(--ink); border:1px solid var(--line); }
+  .btn-secondary:hover{ border-color:var(--ink-faint); }
+  .btn-text{ background:transparent; color:var(--teal-dark); padding:8px 4px; font-weight:600; }
+  .btn-text:hover{ text-decoration:underline; }
+  .btn-danger{ background:transparent; color:var(--rust); padding:8px 4px; font-weight:600; }
+  .btn-danger:hover{ text-decoration:underline; }
+  .btn svg{ width:15px; height:15px; }
+  .btn[disabled]{ opacity:.45; cursor:not-allowed; }
+
+  /* ---------- Dashboard cards ---------- */
+  .stat-grid{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:30px;
+  }
+  .stat-card{
+    background:var(--surface); border:1px solid var(--line-soft); border-radius:var(--radius);
+    padding:18px; box-shadow:var(--shadow);
+  }
+  .stat-card .num{ font-family:'Fraunces',serif; font-size:30px; font-weight:600; line-height:1; color:var(--ink); }
+  .stat-card .num.warn{ color:var(--rust); }
+  .stat-card .num.good{ color:var(--teal-dark); }
+  .stat-card .label{ font-size:12.5px; color:var(--ink-soft); margin-top:8px; }
+
+  .section-title{
+    font-size:15px; font-weight:600; margin:34px 0 12px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .section-title .count{ font-weight:500; color:var(--ink-faint); font-size:12.5px; }
+
+  .impact-row{ display:grid; grid-template-columns:1.3fr 1fr; gap:16px; margin-bottom:6px; }
+  .panel{
+    background:var(--surface); border:1px solid var(--line-soft); border-radius:var(--radius);
+    padding:20px; box-shadow:var(--shadow);
+  }
+  .panel h3{ font-size:14px; margin:0 0 14px; color:var(--ink); font-weight:600; }
+  .nps-big{ display:flex; align-items:baseline; gap:8px; margin-bottom:14px; }
+  .nps-big .val{ font-family:'Fraunces',serif; font-size:44px; font-weight:600; }
+  .nps-big .scale{ color:var(--ink-faint); font-size:13px; }
+  .nps-bars{ display:flex; flex-direction:column; gap:8px; }
+  .nps-bar-row{ display:flex; align-items:center; gap:10px; font-size:12.5px; }
+  .nps-bar-row .tag{ width:64px; flex:none; color:var(--ink-soft); }
+  .nps-bar-track{ flex:1; height:8px; background:var(--line-soft); border-radius:5px; overflow:hidden; }
+  .nps-bar-fill{ height:100%; border-radius:5px; }
+  .nps-bar-fill.promotor{ background:var(--sage); }
+  .nps-bar-fill.neutro{ background:var(--amber); }
+  .nps-bar-fill.detrator{ background:var(--rust); }
+  .nps-bar-row .n{ width:20px; text-align:right; color:var(--ink-faint); }
+
+  .attn-list{ display:flex; flex-direction:column; gap:0; }
+  .attn-item{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:11px 0; border-bottom:1px solid var(--line-soft);
+  }
+  .attn-item:last-child{ border-bottom:none; }
+  .attn-item .who{ font-size:13.5px; font-weight:500; }
+  .attn-item .when{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .empty-note{ color:var(--ink-faint); font-size:13px; padding:8px 0; }
+
+  /* ---------- Projects ---------- */
+  .filters{ display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; align-items:center; }
+  .filters input[type=text]{
+    flex:1; min-width:180px; padding:9px 12px; border-radius:8px; border:1px solid var(--line);
+    background:var(--surface); font-size:13.5px; font-family:inherit; color:var(--ink);
+  }
+  .chip-filter{
+    all:unset; cursor:pointer; padding:8px 13px; border-radius:20px; font-size:13px;
+    border:1px solid var(--line); background:var(--surface); color:var(--ink-soft); font-weight:500;
+  }
+  .chip-filter.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+
+  .project-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; }
+  .project-card{
+    background:var(--surface); border:1px solid var(--line-soft); border-radius:var(--radius);
+    padding:18px; box-shadow:var(--shadow); cursor:pointer; transition:border-color .12s ease;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .project-card:hover{ border-color:var(--teal); }
+  .pc-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .pc-title{ font-weight:600; font-size:15px; line-height:1.3; }
+  .pc-client{ font-size:12.5px; color:var(--ink-soft); margin-top:3px; }
+  .badge{
+    font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; white-space:nowrap; flex:none;
+  }
+  .badge.andamento{ background:var(--amber-bg); color:var(--amber); }
+  .badge.entregue{ background:var(--teal-bg); color:var(--teal-dark); }
+  .badge.pausado{ background:var(--line-soft); color:var(--ink-soft); }
+  .badge.cancelado{ background:var(--rust-bg); color:var(--rust); }
+  .pc-meta{ font-size:12.5px; color:var(--ink-soft); display:flex; gap:6px; flex-wrap:wrap; }
+  .pc-meta span:not(:last-child)::after{ content:'·'; margin-left:6px; color:var(--line); }
+  .pc-reminder{
+    font-size:12px; padding:8px 10px; border-radius:7px; background:var(--bg);
+    display:flex; align-items:center; gap:7px; color:var(--ink-soft);
+  }
+  .pc-reminder.overdue{ background:var(--rust-bg); color:var(--rust); font-weight:600; }
+  .pc-reminder.soon{ background:var(--amber-bg); color:var(--amber); font-weight:600; }
+  .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; flex:none; }
+
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--ink-soft);
+  }
+  .empty-state .serif{ font-size:19px; color:var(--ink); margin-bottom:6px; }
+  .empty-state p{ font-size:13.5px; max-width:340px; margin:0 auto 18px; }
+
+  /* ---------- Reminders table ---------- */
+  .rem-list{ display:flex; flex-direction:column; gap:12px; }
+  .rem-group{
+    background:var(--surface); border:1px solid var(--line-soft); border-radius:10px;
+    padding:16px 18px; box-shadow:var(--shadow);
+  }
+  .rem-group-head{ margin-bottom:8px; }
+  .rem-group-head .t1{ font-weight:600; font-size:14.5px; }
+  .rem-group-head .t2{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
+  .rem-sub{
+    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    padding:10px 0; border-top:1px solid var(--line-soft);
+  }
+  .rem-sub:first-of-type{ border-top:1px solid var(--line-soft); }
+  .rem-sub .l{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .rem-sub .tipo{ font-size:13px; font-weight:600; min-width:64px; }
+  .rem-sub .date{ font-size:12.5px; color:var(--ink-soft); }
+  .rem-sub .date .rel-overdue{ color:var(--rust); font-weight:600; }
+  .rem-sub .date .rel-soon{ color:var(--amber); font-weight:600; }
+  .rem-sub .actions{ display:flex; gap:6px; align-items:center; margin-left:auto; }
+  .cal-link{
+    all:unset; cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+    padding:9px 13px; border-radius:8px; font-size:13px; font-weight:600;
+    border:1px solid var(--line); color:var(--ink-soft); white-space:nowrap;
+  }
+  .cal-link:hover{ border-color:var(--teal); color:var(--teal-dark); }
+  .cal-link svg{ width:14px; height:14px; }
+  .attn-item .cal-link{ padding:5px 9px; font-size:12px; }
+  .pdr-row .cal-link{ padding:3px 8px; font-size:11.5px; }
+  .rem-sub .cal-link{ padding:6px 11px; font-size:12.5px; }
+
+
+  /* ---------- Modal ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(20,24,34,0.45);
+    display:none; align-items:flex-start; justify-content:center; padding:40px 16px;
+    z-index:50; overflow-y:auto;
+  }
+  .overlay.open{ display:flex; }
+  .modal{
+    background:var(--surface); border-radius:14px; width:100%; max-width:560px;
+    padding:26px 28px 28px; box-shadow:0 20px 60px rgba(20,24,34,0.25);
+  }
+  .modal h2{ font-size:19px; margin:0 0 4px; font-weight:600; }
+  .modal .modal-sub{ font-size:13px; color:var(--ink-soft); margin-bottom:20px; }
+  .form-row{ margin-bottom:14px; }
+  .form-row label{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; }
+  .form-row input[type=text], .form-row input[type=date], .form-row input[type=number],
+  .form-row select, .form-row textarea{
+    width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--line);
+    font-family:inherit; font-size:14px; color:var(--ink); background:var(--bg);
+  }
+  .form-row textarea{ resize:vertical; min-height:64px; }
+  .form-row input:focus, .form-row select:focus, .form-row textarea:focus{
+    outline:2px solid var(--teal); outline-offset:1px; background:#fff;
+  }
+  .form-grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .form-hint{ font-size:11.5px; color:var(--ink-faint); margin-top:5px; }
+  .modal-actions{ display:flex; justify-content:space-between; align-items:center; margin-top:22px; gap:10px; }
+  .modal-actions .left{ display:flex; gap:8px; }
+  .score-input{ display:flex; align-items:center; gap:14px; }
+  .score-input input[type=range]{ flex:1; accent-color:var(--teal); }
+  .score-input .score-val{ font-family:'Fraunces',serif; font-size:28px; font-weight:600; width:42px; text-align:center; }
+  .nps-tag{ display:inline-block; font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; margin-top:6px; }
+  .nps-tag.promotor{ background:var(--sage-bg); color:var(--sage); }
+  .nps-tag.neutro{ background:var(--amber-bg); color:var(--amber); }
+  .nps-tag.detrator{ background:var(--rust-bg); color:var(--rust); }
+
+  .project-detail-reminders{ margin-top:6px; border-top:1px solid var(--line-soft); padding-top:14px; }
+  .pdr-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; font-size:13px; }
+  .pdr-row .l{ color:var(--ink-soft); }
+  .pdr-row .r{ display:flex; align-items:center; gap:8px; }
+
+  .toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:#fff; padding:11px 18px; border-radius:9px; font-size:13.5px;
+    opacity:0; pointer-events:none; transition:opacity .2s ease, transform .2s ease; z-index:80;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .mobile-tabs{ display:none; }
+
+  @media (max-width: 880px){
+    .stat-grid{ grid-template-columns:repeat(2,1fr); }
+    .impact-row{ grid-template-columns:1fr; }
+    .sidebar{ display:none; }
+    .mobile-tabs{
+      display:flex; gap:4px; overflow-x:auto; padding:14px 16px 10px; background:var(--ink);
+      position:sticky; top:0; z-index:30;
+    }
+    .mobile-tabs button{
+      all:unset; cursor:pointer; white-space:nowrap; padding:8px 14px; border-radius:20px;
+      font-size:13px; color:#C6CBDA; font-weight:500;
+    }
+    .mobile-tabs button.active{ background:var(--teal); color:#fff; }
+    main{ padding:22px 18px 50px; }
+    .form-grid2{ grid-template-columns:1fr; }
+    .project-grid{ grid-template-columns:1fr; }
+  }
+  .ph{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--line-soft);color:var(--ink-soft);white-space:nowrap}
+  .ph.warn{background:var(--amber-bg);color:var(--amber)}
+  .ph.bad{background:var(--rust-bg);color:var(--rust)}
+  .ph.good{background:var(--teal-bg);color:var(--teal-dark)}
+  .rem-sub .nps-tag{margin-top:0}
+  .rem-sub .btn{padding:6px 11px;font-size:12.5px}
+  .rem-sub .btn-danger{padding:6px 4px;font-size:12.5px}
+  .form-grid3{display:grid;grid-template-columns:1fr 1fr 90px;gap:12px}
+  .form-row input[type=email]{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);font-family:inherit;font-size:14px;color:var(--ink);background:var(--bg)}
+  .form-row input[type=email]:focus{outline:2px solid var(--teal);outline-offset:1px;background:#fff}
+  .form-row input:disabled{opacity:.45}
+  .chk{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;font-weight:500}
+  .nps-scale{display:grid;grid-template-columns:repeat(11,1fr);gap:4px}
+  .nps-scale button{all:unset;cursor:pointer;text-align:center;padding:9px 0;border:1px solid var(--line);border-radius:7px;font-weight:600;font-size:13px;background:var(--bg);color:var(--ink-soft)}
+  .nps-scale button:hover{border-color:var(--ink-faint)}
+  .nps-scale button.on.promotor{background:var(--sage);border-color:var(--sage);color:#fff}
+  .nps-scale button.on.neutro{background:var(--amber);border-color:var(--amber);color:#fff}
+  .nps-scale button.on.detrator{background:var(--rust);border-color:var(--rust);color:#fff}
+  .ctx{background:var(--bg);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;line-height:1.6}
+  .ctx b{color:var(--ink)}
+  .banner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px;border-radius:10px;margin-bottom:14px;font-size:13px;background:var(--amber-bg);color:#6b4a14}
+  .banner.info{background:var(--teal-bg);color:var(--teal-dark)}
+  .type-hi{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+  .hi{background:var(--bg);border-radius:8px;padding:12px 14px}
+  .hi .k{font-size:11.5px;color:var(--ink-soft)}
+  .hi .v{font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-top:2px}
+  .hi .s{font-size:12px;color:var(--ink-faint)}
+  .trow{display:grid;grid-template-columns:1.3fr 2fr .7fr .7fr;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line-soft);font-size:13px}
+  .trow.h{border-top:none;font-size:11.5px;color:var(--ink-faint);font-weight:600}
+  .stack{display:flex;height:8px;border-radius:5px;overflow:hidden;background:var(--line-soft)}
+  .stack i{display:block;height:100%}
+  @media (max-width:880px){.form-grid3{grid-template-columns:1fr}.type-hi{grid-template-columns:1fr}.trow{grid-template-columns:1fr 1fr}.nps-scale{grid-template-columns:repeat(6,1fr)}}
+  .scope-tools{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+  .scope-tools input{flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:13.5px;background:var(--bg);color:var(--ink)}
+  .scope-tools .btn{padding:7px 12px;font-size:13px}
+</style>
+<script>
+/* ===================== CONFIGURAÇÃO DO FIREBASE =====================
+   Console Firebase > Configurações do projeto > Seus apps > Web (</>) > "firebaseConfig".
+   Troque cada valor "COLE ..." pelo seu. Enquanto estiver com "COLE", a ferramenta
+   funciona em modo local (localStorage) e mostra um aviso na barra lateral. */
+window.FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDTwRxcQSO1mTotiHMWHcyG2pjyOoIS4Co",
+  authDomain: "impacto-pos-projeto.firebaseapp.com",
+  projectId: "impacto-pos-projeto",
+  storageBucket: "impacto-pos-projeto.firebasestorage.app",
+  messagingSenderId: "844098774454",
+  appId: "1:844098774454:web:5bbeba3d9535b87c400d17",
+  measurementId: "G-G93DE77TBL"
+};
+/* ================================================================== */
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark">Impacto Pós-Projeto</div>
+      <div class="sub">PS Júnior · acompanhamento de resultados</div>
+    </div>
+    <nav class="nav" id="navDesktop">
+      <button data-page="dashboard" class="active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Painel
+      </button>
+      <button data-page="projects">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l2-3h5l1.5 2H21v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+        Projetos
+      </button>
+      <button data-page="reminders">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Lembretes
+        <span id="navRemBadge" style="margin-left:auto;background:var(--rust);color:#fff;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:20px;display:none;"></span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="hint" id="bkHint"></div>
+      <button class="ghost-btn" id="btnCsv">⬇ Exportar CSV (análises/BI)</button>
+      <button class="ghost-btn" id="btnExport">⬇ Backup completo (.json)</button>
+      <button class="ghost-btn" id="btnImport">⬆ Importar backup</button>
+      <button class="ghost-btn" id="btnLogout" style="display:none;">⎋ Sair (<span id="userMail"></span>)</button>
+      <input type="file" id="importFile" accept="application/json">
+    </div>
+  </aside>
+
+  <div class="mobile-tabs" id="navMobile">
+    <button data-page="dashboard" class="active">Painel</button>
+    <button data-page="projects">Projetos</button>
+    <button data-page="reminders">Lembretes</button>
+  </div>
+
+  <main>
+
+    <!-- DASHBOARD -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-head">
+        <div>
+          <h1>Painel</h1>
+          <div class="desc">Uma visão rápida do que está entregue, do que precisa de atenção e do impacto real que os projetos geraram.</div>
+        </div>
+        <button class="btn btn-primary" id="btnNewProjectTop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>
+          Novo projeto
+        </button>
+      </div>
+
+      <div id="exBanner"></div><div id="bkBanner"></div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num" id="statTotal">0</div><div class="label">Projetos cadastrados</div></div>
+        <div class="stat-card"><div class="num good" id="statDelivered">0</div><div class="label">Entregues</div></div>
+        <div class="stat-card"><div class="num warn" id="statOverdue">0</div><div class="label">Lembretes atrasados</div></div>
+        <div class="stat-card"><div class="num" id="statSoon">0</div><div class="label">Lembretes nos próximos 30 dias</div></div>
+      </div>
+
+      <div class="impact-row">
+        <div class="panel">
+          <h3>Impacto percebido pelos clientes (NPS de resultado)</h3>
+          <div class="nps-big">
+            <div class="val" id="npsScore">—</div>
+            <div class="scale">de -100 a 100 · <span id="npsRespCount">0</span> respostas</div>
+          </div>
+          <div class="nps-bars" id="npsBars"></div>
+        </div>
+        <div class="panel">
+          <h3>Precisa de atenção agora</h3>
+          <div class="attn-list" id="attnList"></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <h3>Inteligência por escopo do projeto</h3>
+        <div class="type-hi" id="typeHi"></div>
+        <div id="typeTable"></div>
+        <div class="form-hint" id="typeNote" style="margin-top:10px;"></div>
+      </div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section class="page" id="page-projects">
+      <div class="page-head">
+        <div>
+          <h1>Projetos</h1>
+          <div class="desc">Cadastre um projeto e o app agenda sozinho os lembretes de 6 meses e 1 ano para você verificar o impacto gerado.</div>
+        </div>
+        <button class="btn btn-primary" id="btnNewProject">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>
+          Novo projeto
+        </button>
+      </div>
+
+      <div class="filters">
+        <input type="text" id="searchProjects" placeholder="Buscar por título ou cliente…">
+        <button class="chip-filter active" data-status="todos">Todos</button>
+        <button class="chip-filter" data-status="Em andamento">Em andamento</button>
+        <button class="chip-filter" data-status="Entregue">Entregues</button>
+        <button class="chip-filter" data-status="Pausado">Pausados</button>
+        <button class="chip-filter" data-status="Cancelado">Cancelados</button>
+      </div>
+
+      <div class="project-grid" id="projectGrid"></div>
+    </section>
+
+    <!-- REMINDERS -->
+    <section class="page" id="page-reminders">
+      <div class="page-head">
+        <div>
+          <h1>Lembretes de impacto</h1>
+          <div class="desc">Gerados automaticamente 6 meses e 1 ano após a entrega de cada projeto — o momento certo de perguntar ao cliente o que realmente mudou.</div>
+        </div>
+      </div>
+
+      <div class="filters">
+        <button class="chip-filter active" data-rfilter="pendentes">Pendentes</button>
+        <button class="chip-filter" data-rfilter="atrasados">Atrasados / repescagem</button>
+        <button class="chip-filter" data-rfilter="proximos">Próximos 30 dias</button>
+        <button class="chip-filter" data-rfilter="concluidos">Concluídos</button>
+        <button class="chip-filter" data-rfilter="todos">Todos</button>
+      </div>
+
+      <div class="rem-list" id="remList"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Modal: new/edit project -->
+<div class="overlay" id="overlayProject">
+  <div class="modal">
+    <h2 id="projModalTitle">Novo projeto</h2>
+    <div class="modal-sub">Todo lembrete tem dono: o responsável é convidado no evento do Google Agenda. Os lembretes de 6 meses e 1 ano nascem da data de entrega.</div>
+    <form id="projectForm">
+      <div class="form-row"><label for="f_titulo">Título do projeto *</label><input type="text" id="f_titulo" required placeholder="Ex.: Precificação do mix de produtos"></div>
+      <div class="form-row"><label for="f_cliente">Cliente *</label><input type="text" id="f_cliente" required list="clientList"><datalist id="clientList"></datalist></div>
+      <div class="form-grid2">
+        <div class="form-row"><label for="f_email">E-mail do cliente</label><input type="email" id="f_email" placeholder="contato@cliente.com.br"></div>
+        <div class="form-row"><label for="f_telefone">Telefone do cliente</label><input type="text" id="f_telefone" placeholder="(51) 99999-8888"></div>
+      </div>
+      <div class="form-row">
+        <label for="f_resp">Responsável pelo Follow-up (e-mail) *</label>
+        <input type="email" id="f_resp" required placeholder="quem fará o contato em 6 meses e 1 ano">
+        <div class="form-hint">Entra como convidado no evento: o lembrete cai na agenda certa mesmo que a equipe rotacione.</div>
+      </div>
+      <div class="form-row"><label for="f_tipo">Escopo do projeto *</label>
+        <select id="f_tipo" required></select>
+        <div class="scope-tools"><input type="text" id="f_novoEscopo" placeholder="Novo escopo (ex.: Precificação)"><button type="button" class="btn btn-secondary" id="btnAddScope">Adicionar</button><button type="button" class="btn-danger" id="btnDelScope">Remover selecionado</button></div>
+        <div class="form-hint">A lista começa vazia: cadastre os escopos que a PS Júnior atende. Ela é compartilhada com a equipe.</div></div>
+      <div class="form-row"><label for="f_status">Status</label>
+        <select id="f_status"><option>Em andamento</option><option>Entregue</option><option>Pausado</option><option>Cancelado</option></select></div>
+      <div class="form-grid2">
+        <div class="form-row"><label for="f_entrega">Data de entrega (real ou prevista)</label><input type="date" id="f_entrega"></div>
+        <div class="form-row"><label for="f_valor">Valor do projeto (R$, opcional)</label><input type="number" id="f_valor" min="0" step="0.01"></div>
+      </div>
+      <div class="form-row"><label for="f_gargalo">Qual era o gargalo/dor inicial? *</label><textarea id="f_gargalo" required placeholder="O problema do cliente antes do projeto."></textarea></div>
+      <div class="form-row"><label for="f_solucao">Qual foi a solução exata entregue? (obrigatório se Entregue)</label><textarea id="f_solucao" placeholder="O que foi entregue, de forma específica o bastante para quem ligar daqui a 1 ano."></textarea></div>
+      <div class="form-row">
+        <label>Meta de impacto (recomendado): KPI alvo, valor antes e unidade</label>
+        <div class="form-grid3"><input type="text" id="f_kpi" placeholder="Ex.: Margem"><input type="number" step="any" id="f_antes" placeholder="Valor antes"><input type="text" id="f_unid" placeholder="Unid."></div>
+        <div class="form-hint">Alimenta o roteiro do Google Agenda e pré-preenche o registro do resultado.</div>
+      </div>
+      <div id="editReminderBlock" style="display:none;">
+        <div class="project-detail-reminders">
+          <label style="display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:8px;">Lembretes deste projeto</label>
+          <div id="pdrList"></div>
+          <button type="button" class="btn-text" id="btnAddCustomReminder" style="padding:6px 0 0;">+ Adicionar lembrete personalizado</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <div class="left"><button type="button" class="btn-danger" id="btnDeleteProject" style="display:none;">Excluir projeto</button></div>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="btn btn-secondary" id="btnCancelProject">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar projeto</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: register reminder result -->
+<div class="overlay" id="overlayReminder">
+  <div class="modal">
+    <h2>Registrar resultado</h2>
+    <div class="modal-sub" id="rSub"></div>
+    <div class="ctx" id="rCtx"></div>
+    <form id="reminderForm">
+      <div class="form-row"><label for="r_ad">Status de adoção *</label>
+        <select id="r_ad" required><option value="">Selecione…</option><option>Cliente aplicou totalmente</option><option>Aplicou parcialmente</option><option>Não aplicou</option></select></div>
+      <div class="form-row"><label for="r_kpi">Métrica principal (KPI alvo) *</label><input type="text" id="r_kpi" required placeholder="Ex.: Margem, Ticket médio, Redução de custo"></div>
+      <div class="form-grid3">
+        <div class="form-row"><label for="r_antes">Valor antes do projeto</label><input type="number" step="any" id="r_antes"></div>
+        <div class="form-row"><label for="r_depois">Valor após 6 meses / 1 ano</label><input type="number" step="any" id="r_depois"></div>
+        <div class="form-row"><label for="r_unid">Unid.</label><input type="text" id="r_unid" placeholder="%, R$"></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="r_sem"> Não foi possível obter os valores (fica registrado como dado ausente, não como zero)</label>
+      <div class="form-hint" id="r_var" style="margin:-4px 0 12px;"></div>
+      <div class="form-row"><label>Você recomendaria nossa consultoria? (NPS, 0 a 10) *</label><div class="nps-scale" id="r_nps"></div></div>
+      <div class="form-row"><label for="r_com">Comentário livre</label><textarea id="r_com" placeholder="Contexto adicional, aprendizados, oportunidades."></textarea></div>
+      <div class="modal-actions">
+        <div class="left"></div>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="btn btn-secondary" id="btnCancelReminder">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar resultado</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: custom reminder -->
+<div class="overlay" id="overlayCustomReminder">
+  <div class="modal">
+    <h2>Novo lembrete personalizado</h2>
+    <div class="modal-sub">Para casos fora do padrão de 6 meses / 1 ano.</div>
+    <form id="customReminderForm">
+      <div class="form-row">
+        <label for="cr_titulo">Título do lembrete</label>
+        <input type="text" id="cr_titulo" required placeholder="Ex.: Follow-up de 3 meses">
+      </div>
+      <div class="form-row">
+        <label for="cr_data">Data</label>
+        <input type="date" id="cr_data" required>
+      </div>
+      <div class="modal-actions">
+        <div class="left"></div>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="btn btn-secondary" id="btnCancelCustomReminder">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Adicionar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="overlay" id="authGate"><div class="modal" style="text-align:center;max-width:420px;">
+  <h2>Impacto Pós-Projeto</h2>
+  <div class="modal-sub" id="authMsg">Entre com a conta Google autorizada para acessar os dados compartilhados da equipe.</div>
+  <button class="btn btn-primary" id="btnLogin" style="justify-content:center;">Entrar com Google</button>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(()=>{
+"use strict";
+const KEY="ppj_impacto_v2",OLD="ppj_impacto_v1";
+const TYPES=["Financeiro","Estratégico","Marketing","Processos e Operações","Pesquisa de mercado","Pessoas e RH","Tecnologia","Design e Identidade","Outro"];
+const MAP={"Precificação":"Financeiro","Gestão financeira":"Financeiro","Planejamento estratégico":"Estratégico","Diagnóstico empresarial":"Estratégico","Marketing e redes sociais":"Marketing","Processos e produtividade":"Processos e Operações","Desenvolvimento de software/site":"Tecnologia","Identidade visual":"Design e Identidade","Gestão de pessoas":"Pessoas e RH"};
+const ADOC=["Cliente aplicou totalmente","Aplicou parcialmente","Não aplicou"];
+const $=id=>document.getElementById(id),qa=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>s==null?"":String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad=n=>String(n).padStart(2,"0");
+const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const today=()=>iso(new Date());
+const addM=(s,n)=>{const d=parse(s);d.setMonth(d.getMonth()+n);return iso(d)};
+const addD=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d)};
+const diff=s=>Math.round((parse(s)-parse(today()))/864e5);
+const fmt=s=>s?s.split("-").reverse().join("/"):"—";
+const nf=n=>Number(n).toLocaleString("pt-BR",{maximumFractionDigits:2});
+const uid=p=>p+"-"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const cut=(s,n=200)=>{s=(s||"").trim();return s.length>n?s.slice(0,n-1)+"…":s};
+const rd=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const rel=s=>{const d=diff(s);return d===0?"hoje":d>30?`em ~${Math.round(d/30)} meses`:d>0?`em ${d} dias`:`há ${-d} dias`};
+const cat=n=>n==null?null:n>=9?"promotor":n>=7?"neutro":"detrator";
+const varOf=r=>{if(r.antes==null||r.depois==null)return null;const a=r.depois-r.antes;return{a,p:r.antes?a/Math.abs(r.antes)*100:null}};
+const vtxt=r=>{const v=varOf(r);return v?`${esc(r.kpi||"")}: ${nf(r.antes)} → ${nf(r.depois)} ${esc(r.unidade||"")}${v.p==null?"":` (${v.p>0?"+":""}${nf(v.p)}%)`}`:""};
+
+/* ---------- dados, migração e seed ---------- */
+function norm(d){
+  d.projects=(d.projects||[]).map(p=>({responsavelEmail:"",gargalo:p.descricao||"",solucao:"",kpi:"",antes:null,unidade:"",...p,tipo:MAP[p.tipo]||p.tipo}));
+  d.reminders=(d.reminders||[]).map(r=>({tentativas:[],proximoContato:null,nps:r.score??null,...r}));
+  d.meta=d.meta||{ultimoBackup:null};d.escopos=Array.isArray(d.escopos)?d.escopos:[];return d;
+}
+function seed(){
+  const t=today(),e1=addM(t,-8),e2=addD(addM(t,-6),-5),e3=addM(t,-10);
+  const R=(pid,ent,tipo,m,x={})=>({id:uid("REM"),projetoId:pid,tipo,dataAgendada:addM(ent,m),status:"Pendente",tentativas:[],proximoContato:null,nps:null,...x});
+  const b={email:"",telefone:"",responsavelEmail:"responsavel@psjunior.com",status:"Entregue",valor:null,criadoEm:t,exemplo:true};
+  return{meta:{ultimoBackup:null},projects:[
+    {...b,id:"PRJ-ex1",titulo:"Precificação do mix de produtos",cliente:"Padaria Estrela do Sul",email:"marina@padariaestrela.com.br",telefone:"(51) 99999-8888",tipo:"Financeiro",dataEntrega:e1,valor:3500,gargalo:"Margem apertada e preços definidos no achismo.",solucao:"Planilha de custos, matriz de preços e política de descontos.",kpi:"Margem de contribuição",antes:18,unidade:"%"},
+    {...b,id:"PRJ-ex2",titulo:"Plano de mídia social",cliente:"Studio Aurora",tipo:"Marketing",dataEntrega:e2,gargalo:"Pouca presença digital e poucos leads.",solucao:"Calendário editorial e funil de captação de leads.",kpi:"Leads por mês",antes:30,unidade:"leads"},
+    {...b,id:"PRJ-ex3",titulo:"Planejamento estratégico 2026",cliente:"Metalúrgica Vale",tipo:"Estratégico",dataEntrega:e3,gargalo:"Sem metas claras e decisões reativas.",solucao:"Mapa estratégico, OKRs trimestrais e rotina de acompanhamento.",kpi:"Receita mensal",antes:120,unidade:"mil R$"}
+  ],reminders:[
+    R("PRJ-ex1",e1,"6 meses",6,{status:"Concluído",concluidoEm:addM(e1,6),adocao:ADOC[0],kpi:"Margem de contribuição",antes:18,depois:26,unidade:"%",nps:9,comentario:"Cliente mantém a política de descontos."}),
+    R("PRJ-ex1",e1,"1 ano",12),R("PRJ-ex2",e2,"6 meses",6),R("PRJ-ex2",e2,"1 ano",12),
+    R("PRJ-ex3",e3,"6 meses",6,{status:"Concluído",concluidoEm:addM(e3,6),adocao:ADOC[1],kpi:"Receita mensal",antes:120,depois:132,unidade:"mil R$",nps:7,comentario:"Aplicou os OKRs, mas sem rotina mensal."}),
+    R("PRJ-ex3",e3,"1 ano",12)]};
+}
+/* ---------- persistência: Firestore em tempo real (ou localStorage se o Firebase não estiver configurado) ---------- */
+const FB=window.FIREBASE_CONFIG||{},REMOTE=!!(window.firebase&&FB.apiKey&&!/COLE/.test(FB.apiKey));
+const META="ppj_meta",js=o=>JSON.stringify(o,(k,v)=>v&&typeof v==="object"&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a<b?-1:1)):v);
+let db=null,cache={projects:{},reminders:{}},unsub=[],loaded=0,cacheEsc=js([]);
+function loadLocal(){for(const k of[KEY,OLD]){const raw=rd(k);if(raw){try{return norm(JSON.parse(raw))}catch(e){}}}return norm(seed())}
+function listen(){ // assina as coleções "projects" e "reminders": qualquer alteração de qualquer membro chega aqui
+  unsub.forEach(f=>f());unsub=[];loaded=0;const seen={};
+  ["projects","reminders"].forEach(c=>unsub.push(db.collection(c).onSnapshot(sn=>{
+    S[c]=sn.docs.map(d=>d.data());norm(S);
+    cache[c]=Object.fromEntries(S[c].map(x=>[x.id,js(x)]));
+    if(!seen[c]){seen[c]=1;loaded++}
+    renderAll();
+  },e=>toast("Firebase: "+(e.code||e.message)))));
+  unsub.push(db.collection("settings").doc("escopos").onSnapshot(d=>{S.escopos=d.exists?(d.data().list||[]):[];cacheEsc=js(S.escopos);if(!seen.e){seen.e=1;loaded++}renderAll();fillScopes()},e=>toast("Firebase: "+(e.code||e.message))));
+}
+function load(){
+  if(!REMOTE)return loadLocal();
+  firebase.initializeApp(FB);db=firebase.firestore();
+  try{db.enablePersistence({synchronizeTabs:true}).catch(()=>{})}catch(e){}
+  firebase.auth().onAuthStateChanged(u=>{
+    if(u){$("authGate").classList.remove("open");$("userMail").textContent=u.email;listen()}
+    else{unsub.forEach(f=>f());unsub=[];loaded=0;S.projects=[];S.reminders=[];cache={projects:{},reminders:{}};$("authGate").classList.add("open");renderAll()}
+  });
+  return norm({projects:[],reminders:[],meta:{ultimoBackup:rd(META)||null}});
+}
+let S=load(),editing=null,rid=null,rN=null,PF="todos",PS="",RF="pendentes",tt;
+const P=id=>S.projects.find(p=>p.id===id);
+const toast=m=>{const e=$("toast");e.textContent=m;e.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>e.classList.remove("show"),2800)};
+function save(){ // grava só o que mudou (diff contra o último estado sincronizado)
+  if(!REMOTE){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast("Não consegui salvar neste navegador. Exporte um backup agora.")}return}
+  try{localStorage.setItem(META,S.meta.ultimoBackup||"")}catch(e){}
+  if(loaded<3){toast("Sincronizando com o Firebase… tente de novo em instantes.");return}
+  const ops=[];
+  ["projects","reminders"].forEach(c=>{
+    const ids=new Set(S[c].map(x=>x.id));
+    S[c].forEach(x=>{const j=js(x);if(cache[c][x.id]!==j){cache[c][x.id]=j;ops.push(b=>b.set(db.collection(c).doc(x.id),JSON.parse(JSON.stringify(x))))}});
+    Object.keys(cache[c]).forEach(id=>{if(!ids.has(id)){delete cache[c][id];ops.push(b=>b.delete(db.collection(c).doc(id)))}});
+  });
+  const je=js(S.escopos||[]);if(je!==cacheEsc){cacheEsc=je;ops.push(b=>b.set(db.collection("settings").doc("escopos"),{list:S.escopos}))}
+  for(let i=0;i<ops.length;i+=400){const b=db.batch();ops.slice(i,i+400).forEach(f=>f(b));b.commit().catch(e=>toast("Erro ao salvar no Firebase: "+(e.code||e.message)))}
+}
+
+/* ---------- cadência: fase de cada lembrete ---------- */
+const nextContact=r=>r.proximoContato||addD(r.dataAgendada,15);
+function phase(r){
+  if(r.status==="Concluído")return"done";if(r.status==="Perdido")return"lost";
+  const d=diff(r.dataAgendada);if(d>=0)return d<=30?"soon":"ok";
+  return diff(nextContact(r))>=0?"retry":"retryExp";
+}
+const late=r=>{const f=phase(r);return f==="retry"||f==="retryExp"};
+const open=r=>{const f=phase(r);return f!=="done"&&f!=="lost"};
+const PH={ok:["Agendado",""],soon:["Vence em breve","warn"],retry:["Sem Resposta · Repescagem","bad"],retryExp:["Repescagem vencida","bad"],done:["Concluído","good"],lost:["Ciclo perdido",""]};
+const syncAuto=p=>{if(!p.dataEntrega)return;[["6 meses",6],["1 ano",12]].forEach(([tp,m])=>{const d=addM(p.dataEntrega,m),x=S.reminders.find(r=>r.projetoId===p.id&&r.tipo===tp);
+  if(!x)S.reminders.push({id:`REM-${p.id}-${m}`,projetoId:p.id,tipo:tp,dataAgendada:d,status:"Pendente",tentativas:[],proximoContato:null,nps:null});
+  else if(x.status==="Pendente"&&x.dataAgendada!==d){x.dataAgendada=d;x.proximoContato=null}})};
+
+/* ---------- Google Agenda ---------- */
+function gcal(r,p){
+  const ph=phase(r),rt=ph==="retry"||ph==="retryExp",dt=ph==="retry"?nextContact(r):ph==="retryExp"?today():r.dataAgendada;
+  const kpi=cut(p.kpi,80)||"principal do projeto",ref=p.antes!=null?` (referência antes do projeto: ${nf(p.antes)}${p.unidade?" "+p.unidade:""})`:"";
+  const L=[`ROTEIRO DE FOLLOW-UP · ${r.tipo}${rt?" · REPESCAGEM":""}`,`Cliente: ${p.cliente}${p.email?" · "+p.email:""}${p.telefone?" · "+p.telefone:""}`,`Gargalo inicial: ${cut(p.gargalo)||"—"}`,`Solução entregue: ${cut(p.solucao)||"—"}`,"",
+    `1. Pergunte se a solução "${cut(p.solucao,120)||"entregue"}" foi aplicada (totalmente, parcialmente ou não).`,
+    `2. Pergunte qual foi a variação na métrica "${kpi}"${ref} e peça o valor atual.`,
+    "3. Pergunte: de 0 a 10, você recomendaria a PS Júnior?","4. Registre tudo no app Impacto Pós-Projeto."];
+  const q=new URLSearchParams({action:"TEMPLATE",text:`${rt?"Repescagem":"Impacto"} ${r.tipo} — ${p.titulo} (${p.cliente})`,dates:dt.replace(/-/g,"")+"/"+addD(dt,1).replace(/-/g,""),details:L.join("\n"),ctz:"America/Sao_Paulo"});
+  if(p.responsavelEmail)q.set("add",p.responsavelEmail);
+  return"https://calendar.google.com/calendar/render?"+q;
+}
+const ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>';
+const cal=(r,p)=>`<a class="cal-link" href="${esc(gcal(r,p))}" target="_blank" rel="noopener" title="Abre o Google Agenda e convida o responsável">${ICON}Google Agenda</a>`;
+
+/* ---------- linha de lembrete (usada na aba Lembretes e no modal do projeto) ---------- */
+function sub(r,p){
+  const ph=phase(r),[lb,cl]=PH[ph],c=cat(r.nps);let x="";
+  if(ph==="retry")x=`<span class="date">novo contato sugerido: <b>${fmt(nextContact(r))}</b>${r.tentativas.length?` · ${r.tentativas.length} tentativa(s)`:""}</span>`;
+  else if(ph==="retryExp")x=`<span class="date">sem retorno: nova tentativa ou encerrar o ciclo</span>`;
+  else if(ph==="done")x=`<span class="date">${esc(r.adocao||"adoção não informada")}${vtxt(r)?" · "+vtxt(r):r.semMetrica?" · valores não obtidos":""}</span>${c?`<span class="nps-tag ${c}">NPS ${r.nps}</span>`:""}`;
+  else if(ph!=="lost")x=`<span class="date">${rel(r.dataAgendada)}</span>`;
+  const id=`data-id="${r.id}"`;
+  const b=ph==="done"?`<button class="btn btn-secondary" data-act="reg" ${id}>Editar</button>`:ph==="lost"?`<button class="btn btn-secondary" data-act="reopen" ${id}>Reabrir</button>`:
+    `${cal(r,p)}${late(r)?`<button class="btn btn-secondary" data-act="try" ${id}>Sem resposta</button>`:""}${ph==="retryExp"?`<button class="btn-danger" data-act="lost" ${id}>Encerrar</button>`:""}<button class="btn btn-primary" data-act="reg" ${id}>Registrar</button>`;
+  return`<div class="rem-sub"><div class="l"><span class="tipo">${esc(r.tipo)}</span><span class="date">${fmt(r.dataAgendada)}</span><span class="ph ${cl}">${lb}</span>${x}</div><div class="actions">${b}</div></div>`;
+}
+
+/* ---------- painel ---------- */
+function dash(){
+  const pr=S.projects,rm=S.reminders,lt=rm.filter(late).length;
+  $("statTotal").textContent=pr.length;$("statDelivered").textContent=pr.filter(p=>p.status==="Entregue").length;
+  $("statOverdue").textContent=lt;$("statSoon").textContent=rm.filter(r=>phase(r)==="soon").length;
+  const bd=$("navRemBadge");bd.style.display=lt?"inline-block":"none";bd.textContent=lt;
+  const ub=S.meta.ultimoBackup,dd=ub?-diff(ub):null;
+  $("bkHint").textContent=(REMOTE?"Sincronizado em tempo real (Firebase). ":"⚠ Firebase não configurado: dados só neste navegador. ")+"Último backup: "+(ub?fmt(ub):"nunca");
+  $("bkBanner").innerHTML=!REMOTE&&pr.length&&(dd===null||dd>14)?`<div class="banner"><span>⚠ Seus dados existem só neste navegador. Último backup: ${ub?"há "+dd+" dias":"nunca"}.</span><button class="btn btn-secondary" data-act="bk">Exportar backup</button></div>`:"";
+  $("exBanner").innerHTML=pr.some(p=>p.exemplo)?`<div class="banner info"><span>Você está vendo dados de exemplo.</span><button class="btn btn-secondary" data-act="rmex">Remover exemplos</button></div>`:"";
+  const D=rm.filter(r=>r.status==="Concluído"&&P(r.projetoId)),sc=D.filter(r=>typeof r.nps==="number");
+  const pm=sc.filter(r=>r.nps>=9).length,dt=sc.filter(r=>r.nps<=6).length,nu=sc.length-pm-dt,mx=Math.max(pm,nu,dt,1);
+  $("npsRespCount").textContent=sc.length;
+  const ne=$("npsScore");
+  if(!sc.length){ne.textContent="Sem dados";ne.style.color="var(--ink-faint)"}
+  else{const n=Math.round((pm-dt)/sc.length*100);ne.textContent=(n>0?"+":"")+n;ne.style.color=n>=0?"var(--teal-dark)":"var(--rust)"}
+  $("npsBars").innerHTML=[["Promotor",pm,"promotor"],["Neutro",nu,"neutro"],["Detrator",dt,"detrator"]].map(([l,n,c])=>`<div class="nps-bar-row"><span class="tag">${l}</span><div class="nps-bar-track"><div class="nps-bar-fill ${c}" style="width:${n/mx*100}%"></div></div><span class="n">${n}</span></div>`).join("");
+  const at=rm.filter(r=>late(r)||phase(r)==="soon").sort((a,b)=>a.dataAgendada.localeCompare(b.dataAgendada)).slice(0,6);
+  $("attnList").innerHTML=at.length?at.map(r=>{const p=P(r.projetoId);if(!p)return"";return`<div class="attn-item"><div><div class="who">${esc(p.titulo)} · ${esc(r.tipo)}</div><div class="when" style="color:${late(r)?"var(--rust)":"var(--ink-soft)"}">${PH[phase(r)][0]} · ${esc(p.cliente)}</div></div><div style="display:flex;gap:4px;align-items:center;">${cal(r,p)}<button class="btn-text" data-act="reg" data-id="${r.id}">Registrar</button></div></div>`}).join(""):'<div class="empty-note">Nada pendente por enquanto.</div>';
+  // inteligência por tipo de serviço
+  const T={};
+  D.forEach(r=>{const p=P(r.projetoId),g=T[p.tipo||"Sem escopo"]??={tipo:p.tipo||"Sem escopo",a:0,f:0,pa:0,no:0,np:[]};
+    if(r.adocao){g.a++;r.adocao===ADOC[0]?g.f++:r.adocao===ADOC[1]?g.pa++:g.no++}
+    if(typeof r.nps==="number")g.np.push(r.nps)});
+  const rows=Object.values(T).map(g=>({...g,impl:g.a?(g.f+g.pa)/g.a*100:null,nps:g.np.length?(g.np.filter(n=>n>=9).length-g.np.filter(n=>n<=6).length)/g.np.length*100:null}));
+  const best=(k,nk)=>rows.filter(x=>x[k]!=null).sort((a,b)=>b[k]-a[k]||b[nk]-a[nk])[0];
+  const bi=best("impl","a"),bn=best("nps","np");
+  const hi=(k,x,v,n)=>`<div class="hi"><div class="k">${k}</div>${x?`<div class="v">${esc(x.tipo)} · ${v}</div><div class="s">n = ${n}${n<3?" · amostra pequena, interprete com cautela":""}</div>`:'<div class="s">Registre resultados para ver.</div>'}</div>`;
+  $("typeHi").innerHTML=hi("Maior taxa de implementação",bi,bi?Math.round(bi.impl)+"%":"",bi?bi.a:0)+hi("Melhor NPS",bn,bn?(bn.nps>0?"+":"")+Math.round(bn.nps):"",bn?bn.np.length:0);
+  rows.sort((a,b)=>(b.impl??-1)-(a.impl??-1));
+  $("typeTable").innerHTML=rows.length?`<div class="trow h"><span>Escopo do projeto</span><span>Adoção (total · parcial · não)</span><span>Implementação</span><span>NPS</span></div>`+rows.map(g=>`<div class="trow"><span>${esc(g.tipo)} <span class="form-hint">n=${Math.max(g.a,g.np.length)}</span></span><div class="stack" title="${g.f} total · ${g.pa} parcial · ${g.no} não">${g.a?`<i style="width:${g.f/g.a*100}%;background:var(--sage)"></i><i style="width:${g.pa/g.a*100}%;background:var(--amber)"></i><i style="width:${g.no/g.a*100}%;background:var(--rust)"></i>`:""}</div><b>${g.impl==null?"—":Math.round(g.impl)+"%"}</b><b>${g.nps==null?"—":(g.nps>0?"+":"")+Math.round(g.nps)}</b></div>`).join(""):"";
+  const q=D.filter(r=>varOf(r)).length;
+  $("typeNote").textContent=D.length?`Implementação = aplicou total ou parcialmente ÷ resultados com adoção informada. ${Math.round(q/D.length*100)}% dos resultados têm métrica quantificada (antes × depois).`:"";
+}
+
+/* ---------- projetos ---------- */
+const SB={"Em andamento":"andamento","Entregue":"entregue","Pausado":"pausado","Cancelado":"cancelado"};
+function projs(){
+  const l=S.projects.filter(p=>(PF==="todos"||p.status===PF)&&(!PS||(p.titulo+" "+p.cliente).toLowerCase().includes(PS))).sort((a,b)=>(b.criadoEm||"").localeCompare(a.criadoEm||""));
+  $("projectGrid").innerHTML=l.length?l.map(p=>{
+    const n=S.reminders.filter(r=>r.projetoId===p.id&&open(r)).sort((a,b)=>a.dataAgendada.localeCompare(b.dataAgendada))[0],ph=n&&phase(n);
+    const rl=n?`<div class="pc-reminder ${late(n)?"overdue":ph==="soon"?"soon":""}"><span class="dot"></span>${esc(n.tipo)} · ${PH[ph][0]} · ${rel(n.dataAgendada)}</div>`:p.dataEntrega?'<div class="pc-reminder"><span class="dot"></span>Todos os lembretes encerrados</div>':"";
+    return`<div class="project-card" data-act="proj" data-id="${p.id}"><div class="pc-top"><div><div class="pc-title">${esc(p.titulo)}</div><div class="pc-client">${esc(p.cliente)}</div></div><span class="badge ${SB[p.status]||"andamento"}">${esc(p.status)}</span></div><div class="pc-meta"><span>${esc(p.tipo)}</span><span>Entrega ${fmt(p.dataEntrega)}</span></div>${p.responsavelEmail?"":'<div class="pc-reminder overdue"><span class="dot"></span>Sem responsável pelo follow-up</div>'}${rl}</div>`}).join(""):
+    `<div class="empty-state" style="grid-column:1/-1;"><div class="serif">${S.projects.length?"Nada encontrado":"Nenhum projeto ainda"}</div><p>${S.projects.length?"Tente outro termo ou filtro.":"Cadastre o primeiro projeto e os lembretes de 6 meses e 1 ano são agendados."}</p>${S.projects.length?"":'<button class="btn btn-primary" data-act="newp">+ Novo projeto</button>'}</div>`;
+}
+const F={titulo:"f_titulo",cliente:"f_cliente",email:"f_email",telefone:"f_telefone",responsavelEmail:"f_resp",tipo:"f_tipo",status:"f_status",dataEntrega:"f_entrega",valor:"f_valor",gargalo:"f_gargalo",solucao:"f_solucao",kpi:"f_kpi",antes:"f_antes",unidade:"f_unid"};
+function pdr(id){const p=P(id);$("pdrList").innerHTML=S.reminders.filter(r=>r.projetoId===id).sort((a,b)=>a.dataAgendada.localeCompare(b.dataAgendada)).map(r=>sub(r,p)).join("")||'<div class="empty-note">Defina a data de entrega e salve para gerar os lembretes.</div>'}
+function openP(id){
+  editing=id;const p=id?P(id):null;
+  $("projModalTitle").textContent=id?"Editar projeto":"Novo projeto";
+  $("btnDeleteProject").style.display=id?"inline-flex":"none";$("editReminderBlock").style.display=id?"block":"none";
+  $("clientList").innerHTML=[...new Set(S.projects.map(x=>x.cliente))].map(n=>`<option value="${esc(n)}">`).join("");
+  fillScopes(p?p.tipo:"");
+  const last=S.projects.length?S.projects[S.projects.length-1].responsavelEmail:"";
+  Object.entries(F).forEach(([k,i])=>$(i).value=p?(p[k]??""):k==="status"?"Em andamento":k==="tipo"?"":k==="responsavelEmail"?last||"":"");
+  if(id)pdr(id);$("overlayProject").classList.add("open");
+}
+const closeP=()=>{editing=null;$("overlayProject").classList.remove("open")};
+$("projectForm").onsubmit=e=>{
+  e.preventDefault();const v=i=>$(i).value.trim();
+  if(v("f_status")==="Entregue"&&!v("f_solucao")){toast("Descreva a solução exata entregue.");return}
+  const d={titulo:v("f_titulo"),cliente:v("f_cliente"),email:v("f_email"),telefone:v("f_telefone"),responsavelEmail:v("f_resp"),tipo:$("f_tipo").value,status:$("f_status").value,dataEntrega:$("f_entrega").value||null,valor:parseFloat($("f_valor").value)||null,gargalo:v("f_gargalo"),solucao:v("f_solucao"),kpi:v("f_kpi"),antes:$("f_antes").value===""?null:parseFloat($("f_antes").value),unidade:v("f_unid")};
+  const was=editing;let p;
+  if(was){p=P(was);Object.assign(p,d)}else{p={id:uid("PRJ"),criadoEm:today(),...d};S.projects.push(p)}
+  syncAuto(p);save();closeP();renderAll();toast(was?"Projeto atualizado.":"Projeto criado: lembretes de 6 meses e 1 ano agendados.");
+};
+$("btnDeleteProject").onclick=()=>{if(!editing||!confirm("Excluir este projeto e todos os lembretes dele?"))return;S.reminders=S.reminders.filter(r=>r.projetoId!==editing);S.projects=S.projects.filter(p=>p.id!==editing);save();closeP();renderAll();toast("Projeto excluído.")};
+$("btnCancelProject").onclick=closeP;
+function fillScopes(want){ // reconstrói o select a partir da lista; mantém o valor atual (inclusive de projetos antigos)
+  const s=$("f_tipo"),cur=want!==undefined?want:s.value,l=[...(S.escopos||[])];
+  if(cur&&!l.includes(cur))l.push(cur);
+  s.innerHTML='<option value="">Selecione…</option>'+l.map(x=>`<option>${esc(x)}</option>`).join("");s.value=cur||"";
+}
+const addScope=()=>{const i=$("f_novoEscopo"),v=i.value.trim().replace(/\s+/g," ");if(!v)return;const l=S.escopos||(S.escopos=[]),ex=l.find(x=>x.toLowerCase()===v.toLowerCase());
+  if(!ex){l.push(v);save()}i.value="";fillScopes(ex||v);toast(ex?"Esse escopo já existe.":"Escopo adicionado.")};
+$("btnAddScope").onclick=addScope;$("f_novoEscopo").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();addScope()}};
+$("btnDelScope").onclick=()=>{const v=$("f_tipo").value;if(!v)return toast("Selecione o escopo que deseja remover.");
+  const n=S.projects.filter(p=>p.tipo===v).length;
+  if(!confirm(n?`${n} projeto(s) usam "${v}". Eles manterão esse valor, mas ele sairá da lista. Remover?`:`Remover "${v}" da lista?`))return;
+  S.escopos=(S.escopos||[]).filter(x=>x!==v);save();fillScopes("");toast("Escopo removido.")};
+["btnNewProject","btnNewProjectTop"].forEach(i=>$(i).onclick=()=>openP(null));
+$("btnAddCustomReminder").onclick=()=>{if(!editing)return;$("customReminderForm").reset();$("overlayCustomReminder").classList.add("open")};
+$("btnCancelCustomReminder").onclick=()=>$("overlayCustomReminder").classList.remove("open");
+$("customReminderForm").onsubmit=e=>{e.preventDefault();S.reminders.push({id:uid("REM"),projetoId:editing,tipo:$("cr_titulo").value.trim(),dataAgendada:$("cr_data").value,status:"Pendente",tentativas:[],proximoContato:null,nps:null});save();$("overlayCustomReminder").classList.remove("open");renderAll();toast("Lembrete adicionado.")};
+
+/* ---------- lembretes (agrupados por projeto) ---------- */
+function rems(){
+  const f={pendentes:open,atrasados:late,proximos:r=>phase(r)==="soon",concluidos:r=>phase(r)==="done",todos:()=>true}[RF],g={};
+  S.reminders.forEach(r=>(g[r.projetoId]??=[]).push(r));
+  const gs=Object.entries(g).filter(([id,rs])=>P(id)&&rs.some(f)).map(([id,rs])=>({p:P(id),rs:rs.sort((a,b)=>a.dataAgendada.localeCompare(b.dataAgendada))})).sort((a,b)=>a.rs[0].dataAgendada.localeCompare(b.rs[0].dataAgendada));
+  $("remList").innerHTML=gs.length?gs.map(({p,rs})=>`<div class="rem-group"><div class="rem-group-head"><div class="t1">${esc(p.titulo)}</div><div class="t2">${esc(p.cliente)} · ${esc(p.tipo)} · ${p.responsavelEmail?"Responsável: "+esc(p.responsavelEmail):'<span class="ph bad">sem responsável</span>'}</div></div>${rs.map(r=>sub(r,p)).join("")}</div>`).join(""):'<div class="empty-state"><div class="serif">Nada por aqui</div><p>Nenhum lembrete neste filtro.</p></div>';
+}
+
+/* ---------- registrar resultado ---------- */
+const sc=$("r_nps");
+sc.innerHTML=[...Array(11).keys()].map(n=>`<button type="button" data-n="${n}" class="${cat(n)}">${n}</button>`).join("");
+const paintN=()=>qa("button",sc).forEach(b=>b.classList.toggle("on",+b.dataset.n===rN));
+sc.onclick=e=>{const b=e.target.closest("[data-n]");if(b){rN=+b.dataset.n;paintN()}};
+const sem=()=>["r_antes","r_depois"].forEach(i=>$(i).disabled=$("r_sem").checked);
+function pv(){const a=$("r_antes").value,d=$("r_depois").value;if($("r_sem").checked||a===""||d===""){$("r_var").textContent="";return}const x=parseFloat(d)-parseFloat(a);$("r_var").textContent=`Variação: ${x>0?"+":""}${nf(x)} ${$("r_unid").value}${parseFloat(a)?` (${x>0?"+":""}${nf(x/Math.abs(parseFloat(a))*100)}%)`:""}`}
+["r_antes","r_depois","r_unid"].forEach(i=>$(i).oninput=pv);$("r_sem").onchange=()=>{sem();pv()};
+function openR(id){
+  rid=id;const r=S.reminders.find(x=>x.id===id),p=P(r.projetoId);
+  $("rSub").textContent=`${p.titulo} · ${r.tipo} · ${p.cliente}`;
+  $("rCtx").innerHTML=`<b>Gargalo:</b> ${esc(p.gargalo||"—")}<br><b>Solução entregue:</b> ${esc(p.solucao||"—")}${p.responsavelEmail?`<br><b>Responsável:</b> ${esc(p.responsavelEmail)}`:""}`;
+  $("r_ad").value=r.adocao||"";$("r_kpi").value=r.kpi||p.kpi||"";$("r_antes").value=(r.antes??p.antes)??"";$("r_depois").value=r.depois??"";
+  $("r_unid").value=r.unidade||p.unidade||"";$("r_sem").checked=!!r.semMetrica;$("r_com").value=r.comentario||"";rN=r.nps??null;
+  sem();paintN();pv();$("overlayReminder").classList.add("open");
+}
+$("btnCancelReminder").onclick=()=>$("overlayReminder").classList.remove("open");
+$("reminderForm").onsubmit=e=>{
+  e.preventDefault();const r=S.reminders.find(x=>x.id===rid),sm=$("r_sem").checked,ad=$("r_ad").value,num=i=>$(i).value===""?null:parseFloat($(i).value);
+  const a=sm?null:num("r_antes"),d=sm?null:num("r_depois");
+  if(rN==null){toast("Selecione a nota de NPS (0 a 10).");return}
+  if(!sm&&ad!==ADOC[2]&&(a==null||d==null)){toast("Informe antes e depois, ou marque que não foi possível obter os valores.");return}
+  Object.assign(r,{status:"Concluído",concluidoEm:r.concluidoEm||today(),adocao:ad,kpi:$("r_kpi").value.trim(),antes:a,depois:d,unidade:$("r_unid").value.trim(),semMetrica:sm,nps:rN,comentario:$("r_com").value.trim()});
+  $("overlayReminder").classList.remove("open");save();renderAll();toast("Resultado registrado.");
+};
+
+/* ---------- exportações ---------- */
+const dl=(name,txt,type)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500)};
+function expJson(){S.meta.ultimoBackup=today();save();dl(`impacto-pos-projeto-backup-${today()}.json`,JSON.stringify(S,null,2),"application/json");renderAll();toast("Backup exportado.")}
+function expCsv(){
+  const q=v=>{let s=v==null?"":String(v);if(/^[=+\-@\t\r]/.test(s))s="'"+s;return/[;"\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  const n=v=>v==null||v===""?"":String(Math.round(v*100)/100).replace(".",",");
+  const H=["projeto_id","projeto","cliente","email_cliente","telefone_cliente","responsavel_followup","escopo_projeto","status_projeto","data_entrega","valor_projeto","gargalo_inicial","solucao_entregue","kpi_alvo","ciclo","data_agendada","status_ciclo","tentativas_sem_resposta","proximo_contato","data_registro","status_adocao","kpi_medido","valor_antes","valor_depois","unidade","variacao_abs","variacao_pct","nps","categoria_nps","comentario"];
+  const list=[];S.projects.forEach(p=>{const rs=S.reminders.filter(r=>r.projetoId===p.id);(rs.length?rs:[null]).forEach(r=>list.push([p,r]))});
+  const L=list.map(([p,r])=>{const v=r&&varOf(r);return[q(p.id),q(p.titulo),q(p.cliente),q(p.email),q(p.telefone),q(p.responsavelEmail),q(p.tipo),q(p.status),q(p.dataEntrega),n(p.valor),q(p.gargalo),q(p.solucao),q(p.kpi),
+    r?q(r.tipo):"",r?q(r.dataAgendada):"",r?q(PH[phase(r)][0]):"",r?r.tentativas.length:"",r?q(r.proximoContato):"",r?q(r.concluidoEm):"",r?q(r.adocao):"",r?q(r.kpi):"",r?n(r.antes):"",r?n(r.depois):"",r?q(r.unidade):"",v?n(v.a):"",v&&v.p!=null?n(v.p):"",r?n(r.nps):"",r?q(cat(r.nps)):"",r?q(r.comentario):""].join(";")});
+  dl(`impacto-pos-projeto-${today()}.csv`,"\uFEFF"+[H.join(";"),...L].join("\r\n"),"text/csv;charset=utf-8");toast("CSV exportado (separador ; · UTF-8).");
+}
+$("btnExport").onclick=expJson;$("btnCsv").onclick=expCsv;$("btnImport").onclick=()=>$("importFile").click();
+$("importFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();
+  fr.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(!Array.isArray(d.projects)||!Array.isArray(d.reminders))throw 0;if(!confirm(REMOTE?"ATENÇÃO: isso substitui os dados compartilhados de TODA a equipe pelos do arquivo. Continuar?":"Substituir os dados atuais pelos do arquivo?"))return;S=norm(d);save();renderAll();toast("Backup importado.")}catch(x){toast("Arquivo inválido.")}};
+  fr.readAsText(f);e.target.value=""};
+
+/* ---------- eventos globais ---------- */
+document.addEventListener("click",e=>{
+  const a=e.target.closest("[data-act]");if(!a)return;const id=a.dataset.id,r=S.reminders.find(x=>x.id===id);
+  switch(a.dataset.act){
+    case"proj":openP(id);break;case"newp":openP(null);break;case"reg":openR(id);break;
+    case"try":r.tentativas.push({data:today()});r.proximoContato=addD(today(),15);save();renderAll();toast("Nova tentativa sugerida para "+fmt(r.proximoContato)+".");break;
+    case"lost":if(confirm("Encerrar este ciclo como perdido (cliente sem resposta)?")){r.status="Perdido";save();renderAll()}break;
+    case"reopen":r.status="Pendente";r.proximoContato=addD(today(),15);save();renderAll();break;
+    case"bk":expJson();break;
+    case"rmex":if(confirm("Remover os projetos de exemplo e seus lembretes?")){const ex=new Set(S.projects.filter(p=>p.exemplo).map(p=>p.id));S.projects=S.projects.filter(p=>!ex.has(p.id));S.reminders=S.reminders.filter(r=>!ex.has(r.projetoId));save();renderAll()}break;
+  }
+});
+qa("[data-status]").forEach(b=>b.onclick=()=>{qa("[data-status]").forEach(x=>x.classList.remove("active"));b.classList.add("active");PF=b.dataset.status;projs()});
+qa("[data-rfilter]").forEach(b=>b.onclick=()=>{qa("[data-rfilter]").forEach(x=>x.classList.remove("active"));b.classList.add("active");RF=b.dataset.rfilter;rems()});
+$("searchProjects").oninput=e=>{PS=e.target.value.toLowerCase();projs()};
+const renderAll=()=>{dash();projs();rems();if(editing)pdr(editing)};
+const go=n=>{qa(".page").forEach(p=>p.classList.toggle("active",p.id==="page-"+n));qa("#navDesktop button,#navMobile button").forEach(b=>b.classList.toggle("active",b.dataset.page===n));renderAll()};
+qa("#navDesktop button,#navMobile button").forEach(b=>b.onclick=()=>go(b.dataset.page));
+
+/* ---------- boot ---------- */
+if(!REMOTE){S.projects.forEach(syncAuto);save()}
+if(REMOTE){$("btnLogout").style.display="block";$("authGate").classList.add("open");
+  $("btnLogin").onclick=()=>firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>{$("authMsg").textContent="Falha no login: "+(e.code||e.message)});
+  $("btnLogout").onclick=()=>firebase.auth().signOut()}
+renderAll();
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+})();
+</script>
+
+</body>
+</html>
