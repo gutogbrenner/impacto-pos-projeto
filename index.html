@@ -201,6 +201,7 @@ table.tl th,table.tl td{text-align:left}
     <div class="top"><div><h1>Projetos</h1><div class="sub">Cadastre ou importe projetos. Os ciclos de 6 meses e 1 ano são criados a partir da data de entrega.</div></div>
       <button class="sv" data-act="newp">＋ Novo projeto</button></div>
     <div class="fl"><input class="srch" id="srchP" placeholder="Buscar por título, cliente ou responsável…"><div class="seg" id="segP"></div></div>
+    <div id="projHidden"></div>
     <div class="pg" id="projGrid"></div>
   </section>
 
@@ -232,6 +233,7 @@ table.tl th,table.tl td{text-align:left}
 <!-- Modal: projeto -->
 <div class="mdb" id="mProj"><div class="md">
   <h3 id="mProjT">Novo projeto</h3>
+  <div class="warn p" id="projMon" hidden></div>
   <div class="ms">Os ciclos de 6 meses e 1 ano nascem da data de entrega. Assim que o projeto estiver <b>Entregue</b>, a pesquisa vai sozinha ao cliente na data certa.</div>
   <form id="fProj">
     <div class="fld"><label for="f_titulo">Título do projeto *</label><input id="f_titulo" required placeholder="Ex.: Precificação do mix de produtos"></div>
@@ -242,7 +244,7 @@ table.tl th,table.tl td{text-align:left}
     </div>
     <div class="fld"><label for="f_resp">Responsável pelo follow-up (e-mail) *</label><input type="email" id="f_resp" required list="dlResp" placeholder="nome@psjunior.com"><datalist id="dlResp"></datalist>
       <div class="hint">Recebe o evento na agenda, o aviso para ligar e o resumo semanal.</div></div>
-    <div class="fld"><label for="f_tipo">Escopo do projeto *</label><select id="f_tipo" required></select>
+    <div class="fld"><label for="f_tipo">Escopo do projeto</label><select id="f_tipo"></select>
       <div class="scope"><input id="f_novoEscopo" placeholder="Novo escopo (ex.: Precificação)"><button type="button" class="mini" id="btnAddScope">Adicionar</button><button type="button" class="mini r" id="btnDelScope">Remover selecionado</button></div></div>
     <div class="f2">
       <div class="fld"><label for="f_status">Status</label><select id="f_status"><option>Em andamento</option><option>Entregue</option><option>Pausado</option><option>Cancelado</option></select></div>
@@ -363,12 +365,21 @@ const BASE=location.origin+location.pathname.replace(/[^/]*$/,"");
 /* ---------- estado ---------- */
 let db=null,ME="",unsub=[],ready={},cache={projects:{},reminders:{}},ver={projects:{},reminders:{}};
 let S={equipe:[],projects:[],reminders:[],escopos:[],alertas:[],indicacoes:[],respostas:[],cfg:{},auto:null};
+let RAW={projects:[],reminders:[]},HID={projects:new Set(),reminders:new Set()};
 let editing=null,rid=null,rN=null,PF="todos",PS="",RF="acao",CF="aut",IF="nova",PAGE="painel";
 const C=()=>({...DEF,...S.cfg});
 const ADMIN=()=>{const a=(S.cfg.admins||[]).map(x=>x.toLowerCase());return !a.length||a.includes(ME)};
 const P=id=>S.projects.find(p=>p.id===id),R=id=>S.reminders.find(r=>r.id===id);
 const isReady=()=>["projects","reminders","esc","cfg"].every(k=>ready[k]);
 
+/* Projetos do Monday com tarefa reaberta ficam ocultos: somem das telas, mas nada é apagado. */
+function applyVis(){
+  S.projects=RAW.projects;S.reminders=RAW.reminders;norm();RAW.projects=S.projects;RAW.reminders=S.reminders;
+  ["projects","reminders"].forEach(c=>{cache[c]=Object.fromEntries(RAW[c].map(x=>[x.id,js(x)]))});
+  const h=new Set(RAW.projects.filter(p=>p.ocultoMonday).map(p=>p.id));
+  HID.projects=h;HID.reminders=new Set(RAW.reminders.filter(r=>h.has(r.projetoId)).map(r=>r.id));
+  S.projects=RAW.projects.filter(p=>!h.has(p.id));S.reminders=RAW.reminders.filter(r=>!h.has(r.projetoId));
+}
 function norm(){
   S.projects=S.projects.map(p=>({email:"",telefone:"",responsavelEmail:"",gargalo:"",solucao:"",kpi:"",antes:null,unidade:"",valor:null,historico:[],...p}));
   S.reminders=S.reminders.map(r=>({tentativas:[],pesquisaEnvios:[],nps:null,semPesquisa:false,...r}));
@@ -393,10 +404,9 @@ function listen(){
   stop();
   const on=(q,k,fn)=>unsub.push(q.onSnapshot(sn=>{ready[k]=1;fn(sn);renderAll()},e=>toast("Firebase: "+(e.code||e.message))));
   ["projects","reminders"].forEach(c=>on(db.collection(c),c,sn=>{
-    S[c]=sn.docs.map(d=>({...d.data(),id:d.id}));norm();
+    RAW[c]=sn.docs.map(d=>({...d.data(),id:d.id}));
     ver[c]=Object.fromEntries(sn.docs.map(d=>[d.id,d.data().v||0]));
-    cache[c]=Object.fromEntries(S[c].map(x=>[x.id,js(x)]));
-    procAll();
+    applyVis();procAll();
   }));
   on(db.collection("settings").doc("escopos"),"esc",d=>{S.escopos=d.exists?(d.data().list||[]):[];fillScopes()});
   on(db.collection("settings").doc("config"),"cfg",d=>{S.cfg=d.exists?d.data():{};bootCfg(d.exists)});
@@ -418,7 +428,7 @@ function save(){
   ["projects","reminders"].forEach(c=>{
     const ids=new Set(S[c].map(x=>x.id));
     S[c].forEach(x=>{const j=js(x);if(cache[c][x.id]!==j){cache[c][x.id]=j;writeDoc(c,x)}});
-    Object.keys(cache[c]).forEach(id=>{if(!ids.has(id)){delete cache[c][id];db.collection(c).doc(id).delete().catch(e=>toast("Erro ao excluir: "+(e.code||e.message)))}});
+    Object.keys(cache[c]).forEach(id=>{if(!ids.has(id)&&!HID[c].has(id)){delete cache[c][id];db.collection(c).doc(id).delete().catch(e=>toast("Erro ao excluir: "+(e.code||e.message)))}});
   });
 }
 function writeDoc(c,x){
@@ -495,12 +505,14 @@ function phase(r){
   if(n<c.maxEnvios||diff(addD(lastEnvio(r),c.diasReenvio))>0)return"waiting";
   return"call";
 }
+const baseR=r=>r.reabertoEm&&r.reabertoEm>r.dataAgendada?r.reabertoEm:r.dataAgendada;
+const antigo=r=>!!(C().inicioAutomacao&&baseR(r)<C().inicioAutomacao);
 const PH={ok:["Agendado","m"],soon:["Vence em breve","a"],due:["Enviar pesquisa","b"],waiting:["Aguardando cliente","p"],call:["Ligar para o cliente","r"],expiring:["Prestes a perder","r"],blocked:["Confirme a entrega","a"],done:["Concluído","g"],lost:["Ciclo perdido","m"],canc:["Projeto cancelado","m"]};
 const ACT=["due","call","expiring","blocked"];
 const late=r=>ACT.includes(phase(r));
 const isOpen=r=>!["done","lost","canc"].includes(phase(r));
 const autoOn=()=>{const a=S.auto;return !!(a&&a.ultimaExecucao&&(Date.now()-Date.parse(a.ultimaExecucao))<36*36e5)&&C().automacaoAtiva!==false};
-const quality=p=>{let s=0;if(p.email||p.telefone)s+=15;if(p.email)s+=10;if(p.responsavelEmail)s+=20;if(p.kpi)s+=15;if(p.antes!=null)s+=15;if((p.solucao||"").length>=20)s+=15;if(p.valor)s+=10;return s};
+const quality=p=>{let s=0;if(p.email||p.telefone)s+=15;if(p.email)s+=10;if(p.responsavelEmail)s+=20;if(p.kpi)s+=15;if(p.antes!=null)s+=15;if((p.solucao||"").length>=20)s+=15;if(p.valor)s+=5;if(p.tipo)s+=5;return s};
 const surveyUrl=t=>(C().urlPesquisa||BASE+"pesquisa.html")+"?t="+t;
 const MOB=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 /* desktop: WhatsApp Web e Gmail na mesma janela do navegador (evita abrir o app/outro navegador pelo protocolo do sistema) */
@@ -521,7 +533,7 @@ function gcal(r,p){
 function row(r,p){
   const ph=phase(r),[lb,cl]=PH[ph],c=cat(r.nps),n=(r.pesquisaEnvios||[]).length,id=`data-id="${r.id}"`,cf=C();let x="";
   if(ph==="done"){x=`<span class="mu sm">${esc(r.adocao||"")}${vtxt(r)?" · "+vtxt(r):r.semMetrica&&r.tipo!==REC?" · valores não obtidos":""}${r.ganhoMensal?` · ${money(r.ganhoMensal)}/mês`:""}</span>${c?`<span class="tag ${c==="promotor"?"g":c==="neutro"?"a":"r"}">NPS ${r.nps}</span>`:""}${r.respondidoPor==="cliente"?'<span class="tag t">respondido pelo cliente</span>':""}`}
-  else if(ph==="due")x=`<span class="mu sm">${autoOn()?"o envio automático sai na próxima rodada (7h)":"automação offline — envie manualmente"}</span>`;
+  else if(ph==="due")x=`<span class="mu sm">${antigo(r)?"ciclo anterior à automação — envie manualmente":autoOn()?"o envio automático sai na próxima rodada (7h)":"automação offline — envie manualmente"}</span>`;
   else if(ph==="waiting")x=`<span class="mu sm">enviada ${n}× · último ${fmt(lastEnvio(r))}${n<cf.maxEnvios?` · reenvio ${fmt(addD(lastEnvio(r),cf.diasReenvio))}`:` · ligar a partir de ${fmt(addD(lastEnvio(r),cf.diasReenvio))}`}</span>`;
   else if(ph==="call")x=`<span class="mu sm">${r.tipo===REC?"cliente detrator — entenda o que deu errado":n?`sem resposta após ${n} envio(s)`:"cliente sem e-mail"}${p.telefone?` · <a href="tel:${esc(p.telefone)}">${esc(p.telefone)}</a>`:""}${r.tentativas.length?` · ${r.tentativas.length} tentativa(s)`:""}</span>`;
   else if(ph==="expiring")x=`<span class="mu sm">sem resposta há ${-diff(r.dataAgendada)} dias — será encerrado automaticamente</span>`;
@@ -590,7 +602,7 @@ function dash(){
   const hi=(k,x,v,n)=>`<div class="hi"><div class="k">${k}</div>${x?`<div class="v">${esc(x.tipo)} · ${v}</div><div class="s">n = ${n}${n<3?" · amostra pequena":""}</div>`:'<div class="s">Registre resultados para ver.</div>'}</div>`;
   $("escopo").innerHTML=`<div class="hi2">${hi("Maior taxa de implementação",bi,bi?bi.impl+"%":"",bi?bi.a:0)}${hi("Melhor NPS",bn,bn?sgn(bn.nps):"",bn?bn.np.length:0)}</div>`+(rows.length?`<div class="ov"><table><tr><th>Escopo</th><th style="width:34%">Adoção (total · parcial · não)</th><th>Implementação</th><th>NPS</th><th>ROI médio</th></tr>${rows.map(g=>`<tr><td>${esc(g.tipo)} <span class="mu sm">n=${Math.max(g.a,g.np.length)}</span></td><td><div class="bar">${g.a?`<i style="width:${g.f/g.a*100}%;background:var(--ok)"></i><i style="width:${g.pa/g.a*100}%;background:var(--wa)"></i><i style="width:${g.no/g.a*100}%;background:var(--er)"></i>`:""}</div></td><td><b>${g.impl==null?"—":g.impl+"%"}</b></td><td><b>${sgn(g.nps)}</b></td><td><b>${g.roiM==null?"—":nf(Math.round(g.roiM*10)/10)+"×"}</b></td></tr>`).join("")}</table></div><div class="lg"><span><i style="background:var(--ok)"></i>Total</span><span><i style="background:var(--wa)"></i>Parcial</span><span><i style="background:var(--er)"></i>Não aplicou</span></div>`:"");
 }
-const missing=p=>{const m=[];if(!p.email)m.push("e-mail do cliente");if(!p.telefone)m.push("telefone");if(!p.responsavelEmail)m.push("responsável");if(!p.kpi)m.push("KPI");if(p.antes==null)m.push("valor antes");if((p.solucao||"").length<20)m.push("solução detalhada");if(!p.valor)m.push("valor do projeto");return m};
+const missing=p=>{const m=[];if(!p.tipo)m.push("escopo");if(!p.email)m.push("e-mail do cliente");if(!p.telefone)m.push("telefone");if(!p.responsavelEmail)m.push("responsável");if(!p.kpi)m.push("KPI");if(p.antes==null)m.push("valor antes");if((p.solucao||"").length<20)m.push("solução detalhada");if(!p.valor)m.push("valor do projeto");return m};
 
 /* ---------- PROJETOS ---------- */
 const SB={"Em andamento":"a","Entregue":"g","Pausado":"m","Cancelado":"r"};
@@ -598,11 +610,14 @@ function projs(){
   const cnt=s=>S.projects.filter(p=>s==="todos"||p.status===s).length;
   $("segP").innerHTML=[["todos","Todos"],["Em andamento","Em andamento"],["Entregue","Entregues"],["Pausado","Pausados"],["Cancelado","Cancelados"]].map(([k,l])=>`<button class="${PF===k?"on":""}" data-pf="${k}">${l}<b>${cnt(k)}</b></button>`).join("");
   const l=S.projects.filter(p=>(PF==="todos"||p.status===PF)&&(!PS||normTxt(p.titulo+" "+p.cliente+" "+p.responsavelEmail).includes(PS))).sort((a,b)=>(b.criadoEm||"").localeCompare(a.criadoEm||""));
+  const oc=RAW.projects.filter(p=>p.ocultoMonday);
+  $("projHidden").innerHTML=oc.length?`<div class="warn p"><span>👁 <b>${oc.length} projeto(s) oculto(s)</b> porque alguma tarefa voltou a ficar pendente no Monday: ${oc.map(p=>esc(p.titulo)).join(", ")}. Eles voltam sozinhos quando todas as tarefas forem concluídas.</span></div>`:"";
   $("projGrid").innerHTML=l.length?l.map(p=>{
     const n=S.reminders.filter(r=>r.projetoId===p.id&&isOpen(r)).sort((a,b)=>a.dataAgendada.localeCompare(b.dataAgendada))[0],q=quality(p);
     const nx=n?`<div class="nx"><span class="tag ${PH[phase(n)][1]}">${PH[phase(n)][0]}</span><span>${esc(n.tipo)} · ${fmt(n.dataAgendada)} · ${rel(n.dataAgendada)}</span></div>`:p.dataEntrega?'<div class="nx mu">Todos os ciclos encerrados</div>':'<div class="nx mu">Sem data de entrega — ciclos não gerados</div>';
     return`<div class="card pc" data-act="proj" data-id="${p.id}"><div class="hd"><div><div class="pt">${esc(p.titulo)}</div><div class="mu sm">${esc(p.cliente)}</div></div><span class="tag ${SB[p.status]||"a"}">${esc(p.status)}</span></div>
-      <div class="meta"><span>${esc(p.tipo||"Sem escopo")}</span><span>Entrega ${fmt(p.dataEntrega)}</span>${p.valor?`<span>${money(p.valor)}</span>`:""}</div>
+      <div class="meta"><span>${esc(p.tipo||"Sem escopo")}</span><span>Entrega ${fmt(p.dataEntrega)}</span>${p.valor?`<span>${money(p.valor)}</span>`:""}${p.origem==="monday"?'<span class="tag p">Monday</span>':""}</div>
+      ${(p.mondayAvisos||[]).length?`<div class="nx" style="color:var(--wa)">⚠ Faltam no ${esc(p.titulo)}_doc: ${esc(p.mondayAvisos.join(", "))}</div>`:""}
       <div class="qrow"><span>Cadastro</span><div class="gb"><i style="width:${q}%;${q<70?"background:var(--wa)":""}"></i></div><span>${q}%</span></div>
       ${p.responsavelEmail?"":'<div class="nx" style="color:var(--er)">⚠ Sem responsável pelo follow-up</div>'}${nx}</div>`}).join(""):
     `<div class="card es" style="grid-column:1/-1"><b>${S.projects.length?"Nada encontrado":"Nenhum projeto ainda"}</b>${S.projects.length?"Tente outro termo ou filtro.":"Cadastre o primeiro projeto ou importe uma planilha em Configurações."}</div>`;
@@ -613,6 +628,8 @@ function projRems(id){const p=P(id);$("projRems").innerHTML=S.reminders.filter(r
 function openP(id){
   editing=id;const p=id?P(id):null;
   $("mProjT").textContent=id?"Editar projeto":"Novo projeto";
+  $("projMon").hidden=!(p&&p.origem==="monday");
+  if(p&&p.origem==="monday")$("projMon").innerHTML=`<span>🔗 Sincronizado do Monday. Os campos preenchidos no <b>${esc(p.titulo)}_doc</b> são atualizados de lá de hora em hora — edite no Doc para não perder a alteração. ${p.mondayUrl?`<a href="${esc(p.mondayUrl)}" target="_blank" rel="noopener">Abrir quadro</a>`:""} ${p.mondayDocUrl?` · <a href="${esc(p.mondayDocUrl)}" target="_blank" rel="noopener">Abrir doc</a>`:""}</span>`;
   $("btnDelProj").hidden=!(id&&ADMIN());$("projExtra").hidden=!id;
   $("dlCli").innerHTML=[...new Set(S.projects.map(x=>x.cliente))].map(n=>`<option value="${esc(n)}">`).join("");
   const ativos=S.equipe.filter(m=>m.ativo!==false);$("dlResp").innerHTML=ativos.map(m=>`<option value="${esc(m.email)}">${esc(m.nome||"")}${m.cargo?" · "+esc(m.cargo):""}</option>`).join("")+[...new Set(S.projects.map(x=>x.responsavelEmail).filter(e=>e&&!ativos.some(m=>m.email===e)))].map(n=>`<option value="${esc(n)}">`).join("");
@@ -794,6 +811,7 @@ function cfgPage(){
     ${a?`<div class="mu">Última execução: <b style="color:var(--tx)">${fmt(a.ultimaExecucao)} ${String(a.ultimaExecucao).slice(11,16)} UTC</b> (${ago<1?"há menos de 1 hora":"há "+ago+" h"}) · rotina: ${esc(a.rotina||"—")}</div>${a.resumo?`<div class="hint" style="white-space:pre-wrap;margin-top:8px">${esc(a.resumo)}</div>`:""}${a.erro?`<div class="warn r" style="margin-top:10px"><span><b>Último erro:</b> ${esc(a.erro)}</span></div>`:""}`:
     `<div class="mu">O motor (Google Apps Script) envia as pesquisas por e-mail, faz a repescagem, cria eventos na agenda, avisa o responsável quando precisa ligar, manda alertas de detrator e os resumos semanais/mensais. Instale seguindo o guia <b>LEIA-ME</b> que acompanha o app.</div>`}
   </div>
+  ${mondayCard()}
   <div class="g2">
     <div class="card"><h2 class="st">👥 Pessoas</h2>
       <div class="fld"><label>Administradores (e-mails, um por linha)</label><textarea id="c_adm" ${dis} rows="3">${esc((c.admins||[]).join("\n"))}</textarea><div class="hint">Só eles alteram configurações, excluem projetos e importam dados. Lista vazia = todos são admin.</div></div>
@@ -803,6 +821,7 @@ function cfgPage(){
       <div class="f3" style="grid-template-columns:1fr 1fr 1fr"><div class="fld"><label>Reenviar após (dias)</label><input type="number" id="c_dr" min="1" value="${c.diasReenvio}" ${dis}></div><div class="fld"><label>Máx. de envios</label><input type="number" id="c_me" min="1" max="5" value="${c.maxEnvios}" ${dis}></div><div class="fld"><label>Encerrar após (dias)</label><input type="number" id="c_dp" min="15" value="${c.diasPerdido}" ${dis}></div></div>
       <div class="fld"><label>Link de avaliação no Google (mostrado aos promotores)</label><input id="c_rv" value="${esc(c.reviewLink)}" placeholder="https://g.page/r/…/review" ${dis}></div>
       <div class="fld"><label>Endereço da página de pesquisa</label><input id="c_up" value="${esc(c.urlPesquisa)}" ${dis}></div>
+      <div class="fld"><label>Automação vale para ciclos a partir de</label><input type="date" id="c_ini" value="${esc(c.inicioAutomacao||"")}" ${dis}><div class="hint">Ciclos anteriores a esta data não recebem envio nem encerramento automático (ficam manuais). Definida sozinha na primeira execução do motor.</div></div>
       <label class="chk"><input type="checkbox" id="c_on" ${c.automacaoAtiva!==false?"checked":""} ${dis}> Automação ligada (desmarque para pausar todos os envios)</label>
     </div>
   </div>
@@ -817,10 +836,17 @@ function cfgPage(){
     <div class="hint" style="margin-top:10px">A planilha pode ter colunas como: Título, Cliente, E-mail, Telefone, Responsável, Escopo, Status, Entrega, Valor, Gargalo, Solução, KPI, Antes, Unidade. Projetos já existentes (mesmo título + cliente) são ignorados. A restauração de backup nunca apaga dados: só adiciona o que não existe.</div>
   </div>`;
 }
+function mondayCard(){
+  const m=S.auto&&S.auto.monday;
+  return`<div class="card" style="margin-bottom:18px"><h2 class="st">🔗 Monday ${!m?'<span class="tag a">não conectado</span>':m.erro?'<span class="tag r">erro</span>':'<span class="tag g">sincronizando</span>'}</h2>
+  ${m?`<div class="mu">Última sincronização: <b style="color:var(--tx)">${fmt(m.ultima)} ${String(m.ultima).slice(11,16)} UTC</b> · ${m.quadros} quadro(s) com doc · ${m.concluidos} concluído(s) · ${m.criados} criado(s) · ${m.ocultos} ocultado(s) · ${m.reexibidos} reexibido(s)</div>
+    ${m.erro?`<div class="warn r" style="margin-top:10px"><span><b>Erro:</b> ${esc(m.erro)}</span></div>`:""}${(m.avisos||[]).length?`<div class="hint" style="margin-top:8px">⚠ ${m.avisos.map(esc).join("<br>⚠ ")}</div>`:""}`:
+  '<div class="mu">Cada quadro do Monday com um Doc "<i>nome do quadro</i>_doc" vira um projeto aqui quando todas as tarefas estiverem concluídas. Configure o token no Apps Script (veja o LEIA-ME).</div>'}</div>`;
+}
 function saveCfg(){
   if(!ADMIN())return;const ls=i=>$(i).value.split(/[\s,;]+/).map(x=>x.trim().toLowerCase()).filter(x=>x.includes("@"));
   const adm=ls("c_adm");if(adm.length&&!adm.includes(ME)&&!confirm("Você não está na lista de administradores e perderá o acesso às configurações. Continuar?"))return;
-  db.collection("settings").doc("config").set({admins:adm,diretoria:ls("c_dir"),diasReenvio:Math.max(1,+$("c_dr").value||7),maxEnvios:Math.min(5,Math.max(1,+$("c_me").value||2)),diasPerdido:Math.max(15,+$("c_dp").value||45),reviewLink:$("c_rv").value.trim(),urlPesquisa:$("c_up").value.trim(),automacaoAtiva:$("c_on").checked,atualizadoPor:ME,atualizadoEm:nowIso()},{merge:true})
+  db.collection("settings").doc("config").set({admins:adm,diretoria:ls("c_dir"),diasReenvio:Math.max(1,+$("c_dr").value||7),maxEnvios:Math.min(5,Math.max(1,+$("c_me").value||2)),diasPerdido:Math.max(15,+$("c_dp").value||45),reviewLink:$("c_rv").value.trim(),urlPesquisa:$("c_up").value.trim(),automacaoAtiva:$("c_on").checked,inicioAutomacao:$("c_ini").value||S.cfg.inicioAutomacao||"",atualizadoPor:ME,atualizadoEm:nowIso()},{merge:true})
     .then(()=>toast("Configurações salvas.")).catch(e=>toast("Erro: "+(e.code||e.message)));
 }
 
