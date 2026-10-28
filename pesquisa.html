@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PS Júnior · Como está o resultado do seu projeto?</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{--bg:#070b14;--card:#0d1420;--bd:#1a2436;--tx:#e8edf7;--mu:#8593ab;--pr:#2f6fed;--pri:#6b9bff;--in:#0a101b;--ok:#22c55e;--wa:#e8a93a;--er:#f2564f;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 Inter,system-ui,sans-serif;min-height:100vh;padding:28px 16px 60px}
+.wrap{max-width:640px;margin:0 auto}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:22px}
+.logo i{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#27b3ff,#2f6fed);display:grid;place-items:center;font-style:normal;font-size:13px;color:#fff}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:24px;margin-bottom:16px}
+h1{margin:0 0 6px;font-size:26px;letter-spacing:-.4px;line-height:1.2}
+.sub{color:var(--mu);margin:0}
+.ctx{background:rgba(47,111,237,.08);border-left:3px solid var(--pr);border-radius:8px;padding:11px 13px;margin-top:16px;font-size:14px}
+.ctx b{color:var(--pri)}
+.q{margin-bottom:22px}.q:last-child{margin-bottom:0}
+.qt{font-weight:700;margin-bottom:4px}.qh{color:var(--mu);font-size:13px;margin-bottom:10px}
+.opts{display:grid;gap:8px}
+.opt{display:flex;align-items:center;gap:10px;background:var(--in);border:1px solid var(--bd);border-radius:12px;padding:13px 14px;cursor:pointer;font-weight:500}
+.opt input{accent-color:var(--pr);width:18px;height:18px}
+.opt:has(input:checked){border-color:var(--pr);background:rgba(47,111,237,.12)}
+input[type=number],input[type=text],input[type=tel],textarea{width:100%;background:var(--in);border:1px solid var(--bd);color:var(--tx);border-radius:11px;padding:12px 13px;font:inherit}
+textarea{min-height:84px;resize:vertical}
+input:focus,textarea:focus{outline:2px solid var(--pr);outline-offset:0}
+input:disabled{opacity:.4}
+.row{display:flex;gap:10px;align-items:center}.row input{flex:1}.row span{color:var(--mu);font-weight:600}
+.chk{display:flex;align-items:flex-start;gap:9px;color:var(--mu);font-size:14px;margin-top:10px;cursor:pointer}.chk input{margin-top:3px;accent-color:var(--pr)}
+.nps{display:grid;grid-template-columns:repeat(11,1fr);gap:5px}
+.nps button{border:1px solid var(--bd);background:var(--in);color:var(--mu);border-radius:9px;padding:12px 0;font:inherit;font-weight:700;cursor:pointer}
+.nps button.on.p{background:var(--ok);border-color:var(--ok);color:#06150c}.nps button.on.n{background:var(--wa);border-color:var(--wa);color:#1c1204}.nps button.on.d{background:var(--er);border-color:var(--er);color:#fff}
+.lg{display:flex;justify-content:space-between;color:var(--mu);font-size:12px;margin-top:6px}
+.promo{border:1px solid rgba(34,197,94,.35);background:rgba(34,197,94,.05);border-radius:14px;padding:16px;margin-top:4px}
+.promo .qt{color:var(--ok)}
+.g3{display:grid;grid-template-columns:1fr 1fr;gap:8px}.g3 input:first-child{grid-column:1/-1}
+.sv{width:100%;background:var(--pr);color:#fff;border:0;border-radius:12px;padding:15px;font:inherit;font-weight:700;font-size:16px;cursor:pointer}
+.sv:disabled{opacity:.5;cursor:wait}
+.err{color:var(--er);font-size:14px;min-height:20px;margin-top:10px;text-align:center}
+.done{text-align:center;padding:40px 24px}.done .big{font-size:46px;margin-bottom:8px}
+.btn2{display:inline-block;margin-top:16px;background:var(--in);border:1px solid var(--bd);color:var(--tx);border-radius:11px;padding:12px 18px;font-weight:600;text-decoration:none}
+.foot{color:var(--mu);font-size:12px;text-align:center;margin-top:18px}
+[hidden]{display:none!important}
+@media(max-width:560px){.nps{grid-template-columns:repeat(6,1fr)}h1{font-size:22px}}
+</style></head>
+<body><div class="wrap">
+<div class="logo"><i>PS</i>PS Júnior</div>
+<div id="app"><div class="card">Carregando…</div></div>
+<div class="foot">Suas respostas vão direto para a equipe da PS Júnior e levam cerca de 2 minutos.</div>
+</div>
+<script>
+(()=>{
+"use strict";
+const FB={apiKey:"AIzaSyDTwRxcQSO1mTotiHMWHcyG2pjyOoIS4Co",authDomain:"impacto-pos-projeto.firebaseapp.com",projectId:"impacto-pos-projeto",storageBucket:"impacto-pos-projeto.firebasestorage.app",messagingSenderId:"844098774454",appId:"1:844098774454:web:5bbeba3d9535b87c400d17"};
+const ADOC=["Cliente aplicou totalmente","Aplicou parcialmente","Não aplicou"];
+const LBL={"Cliente aplicou totalmente":"Sim, aplicamos totalmente","Aplicou parcialmente":"Aplicamos em parte","Não aplicou":"Ainda não aplicamos"};
+const $=id=>document.getElementById(id),esc=s=>s==null?"":String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const nf=n=>Number(n).toLocaleString("pt-BR",{maximumFractionDigits:2});
+const app=$("app"),t=(new URLSearchParams(location.search).get("t")||"").replace(/[^a-f0-9]/gi,"");
+const msg=(ico,h,p,extra="")=>app.innerHTML=`<div class="card done"><div class="big">${ico}</div><h1>${h}</h1><p class="sub">${p}</p>${extra}</div>`;
+if(!t)return msg("🔗","Link incompleto","Abra o link exatamente como recebeu da PS Júnior.");
+firebase.initializeApp(FB);const db=firebase.firestore();
+let P=null,nps=null;
+(async()=>{
+  try{
+    const [ps,rs]=await Promise.all([db.collection("pesquisas").doc(t).get(),db.collection("respostas").doc(t).get()]);
+    if(!ps.exists)return msg("🔗","Link inválido","Não encontramos esta pesquisa. Confira o link ou fale com a PS Júnior.");
+    P=ps.data();
+    if(rs.exists)return msg("💙","Já recebemos sua resposta!","Obrigado por nos contar como está o resultado do projeto.");
+    if(P.expiraEm&&P.expiraEm.toDate()<new Date())return msg("⏳","Esta pesquisa expirou","Se quiser nos contar como está o resultado, fale com a PS Júnior.");
+    render();
+  }catch(e){msg("⚠️","Não foi possível carregar","Verifique sua conexão e recarregue a página. ("+esc(e.code||e.message)+")")}
+})();
+function render(){
+  const u=P.unidade?" "+esc(P.unidade):"",tempo=P.ciclo==="1 ano"?"1 ano":P.ciclo==="6 meses"?"6 meses":"algum tempo";
+  app.innerHTML=`
+  <div class="card"><h1>Olá, ${esc(P.cliente)}! O que mudou desde o projeto?</h1>
+    <p class="sub">Há ${tempo} entregamos o projeto <b>${esc(P.projeto)}</b>. Queremos saber, com sinceridade, que resultado ele gerou.</p>
+    ${P.solucao?`<div class="ctx"><b>O que entregamos:</b> ${esc(P.solucao)}</div>`:""}</div>
+  <form id="f">
+  <div class="card">
+    <div class="q"><div class="qt">1. Vocês aplicaram a solução?</div><div class="opts">${ADOC.map(a=>`<label class="opt"><input type="radio" name="ad" value="${a}" required> ${LBL[a]}</label>`).join("")}</div></div>
+    ${P.kpi?`<div class="q" id="qk"><div class="qt">2. Como está hoje: ${esc(P.kpi)}?</div><div class="qh">${P.antes!=null?`Antes do projeto era <b>${nf(P.antes)}${u}</b>. `:""}Pode ser um valor aproximado.</div>
+      <div class="row"><input type="number" step="any" id="dep" inputmode="decimal" placeholder="Valor atual">${u?`<span>${u}</span>`:""}</div>
+      <label class="chk"><input type="checkbox" id="nsei"> Não sei informar agora</label></div>`:""}
+    <div class="q"><div class="qt">${P.kpi?"3":"2"}. Em média, quanto o projeto gera ou economiza por mês? <span style="color:var(--mu);font-weight:500">(opcional)</span></div><div class="qh">Receita a mais ou custo a menos, em reais. Uma estimativa já ajuda muito.</div>
+      <div class="row"><span>R$</span><input type="number" step="any" min="0" id="ganho" inputmode="decimal" placeholder="Ex.: 2000"></div></div>
+  </div>
+  <div class="card">
+    <div class="q"><div class="qt">De 0 a 10, quanto você recomendaria a PS Júnior a um amigo ou parceiro?</div>
+      <div class="nps" id="nps">${[...Array(11).keys()].map(n=>`<button type="button" data-n="${n}" class="${n>=9?"p":n>=7?"n":"d"}">${n}</button>`).join("")}</div>
+      <div class="lg"><span>Nada provável</span><span>Muito provável</span></div></div>
+    <div class="q" id="qc" hidden><div class="qt" id="qct">Quer contar mais?</div><textarea id="com" maxlength="2900"></textarea></div>
+    <div class="promo q" id="promo" hidden>
+      <div class="qt">🌟 Que bom! Pode nos ajudar com mais duas coisas?</div>
+      <div class="qh">Ambas opcionais.</div>
+      <div class="qt" style="color:var(--tx);font-size:14px">Um depoimento curto sobre o projeto</div>
+      <textarea id="depo" maxlength="2900" placeholder="Ex.: A PS Júnior nos ajudou a…"></textarea>
+      <label class="chk"><input type="checkbox" id="cons"> Autorizo a PS Júnior a divulgar este depoimento com o nome da empresa.</label>
+      <div class="qt" style="color:var(--tx);font-size:14px;margin-top:16px">Conhece alguém que também se beneficiaria de uma consultoria?</div>
+      <div class="g3"><input type="text" id="inome" maxlength="110" placeholder="Nome"><input type="text" id="iemp" maxlength="110" placeholder="Empresa"><input type="tel" id="itel" maxlength="30" placeholder="Telefone / WhatsApp"></div>
+    </div>
+  </div>
+  <button class="sv" id="sb">Enviar respostas</button><div class="err" id="err"></div>
+  </form>`;
+  const nb=$("nps");
+  nb.onclick=e=>{const b=e.target.closest("[data-n]");if(!b)return;nps=+b.dataset.n;[...nb.children].forEach(x=>x.classList.toggle("on",+x.dataset.n===nps));
+    $("qc").hidden=false;$("promo").hidden=nps<9;
+    $("qct").textContent=nps<=6?"O que poderíamos ter feito melhor? Sua resposta vai direto para a diretoria.":nps<=8?"O que faltou para ser um 10?":"O que mais fez diferença para vocês? (opcional)"};
+  if($("nsei"))$("nsei").onchange=e=>{$("dep").disabled=e.target.checked};
+  $("f").onsubmit=submit;
+}
+async function submit(e){
+  e.preventDefault();const er=$("err"),ad=(document.querySelector("input[name=ad]:checked")||{}).value;
+  if(!ad)return er.textContent="Responda se a solução foi aplicada.";
+  if(nps==null)return er.textContent="Escolha uma nota de 0 a 10.";
+  const num=id=>{const el=$(id);if(!el||el.disabled||el.value==="")return null;const n=parseFloat(el.value);return isNaN(n)?null:n};
+  const dep=num("dep"),sem=!P.kpi||!!($("nsei")&&$("nsei").checked)||dep==null,prom=nps>=9,inome=prom?$("inome").value.trim():"";
+  const d={adocao:ad,nps,processada:false,respondidoEm:new Date().toISOString(),semMetrica:sem,depois:sem?null:dep,ganhoMensal:num("ganho"),
+    comentario:$("com").value.trim().slice(0,2900),depoimento:prom?$("depo").value.trim().slice(0,2900):"",consentimento:prom&&$("cons").checked,
+    indicacao:inome?{nome:inome.slice(0,110),empresa:$("iemp").value.trim().slice(0,110),telefone:$("itel").value.trim().slice(0,30)}:null};
+  $("sb").disabled=true;er.textContent="";
+  try{
+    await db.collection("respostas").doc(t).set(d);
+    const rv=prom&&P.reviewLink&&/^https:\/\//.test(P.reviewLink)?`<p class="sub" style="margin-top:18px">Se puder, deixe também uma avaliação pública — ajuda muito outras empresas a nos conhecerem.</p><a class="btn2" href="${esc(P.reviewLink)}" target="_blank" rel="noopener">⭐ Avaliar a PS Júnior no Google</a>`:"";
+    msg(nps<=6?"🤝":"💙","Obrigado pela resposta!",nps<=6?"Vamos analisar com cuidado e alguém da diretoria pode entrar em contato para entender melhor.":"Sua resposta ajuda a PS Júnior a medir o impacto real do que fazemos.",rv);
+    window.scrollTo(0,0);
+  }catch(x){$("sb").disabled=false;er.textContent=x.code==="permission-denied"?"Esta pesquisa já foi respondida ou expirou.":"Não foi possível enviar. Tente novamente. ("+(x.code||x.message)+")"}
+}
+})();
+</script>
+</body></html>
