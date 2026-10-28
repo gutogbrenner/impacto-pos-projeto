@@ -217,7 +217,9 @@ table.tl th,table.tl td{text-align:left}
   </section>
 
   <section class="page" id="pg-equipe">
-    <div class="top"><div><h1>Equipe</h1><div class="sub">Desempenho de cada responsável pelo follow-up. Mostra onde ciclos estão morrendo.</div></div></div>
+    <div class="top"><div><h1>Equipe</h1><div class="sub">Cadastro dos membros e desempenho de cada responsável pelo follow-up. Mostra onde ciclos estão morrendo.</div></div></div>
+    <div class="card ov" id="teamMembers" style="margin-bottom:18px"></div>
+    <h2 class="st">Desempenho</h2>
     <div class="card ov" id="teamTable"></div>
   </section>
 
@@ -360,7 +362,7 @@ const BASE=location.origin+location.pathname.replace(/[^/]*$/,"");
 
 /* ---------- estado ---------- */
 let db=null,ME="",unsub=[],ready={},cache={projects:{},reminders:{}},ver={projects:{},reminders:{}};
-let S={projects:[],reminders:[],escopos:[],alertas:[],indicacoes:[],respostas:[],cfg:{},auto:null};
+let S={equipe:[],projects:[],reminders:[],escopos:[],alertas:[],indicacoes:[],respostas:[],cfg:{},auto:null};
 let editing=null,rid=null,rN=null,PF="todos",PS="",RF="acao",CF="aut",IF="nova",PAGE="painel";
 const C=()=>({...DEF,...S.cfg});
 const ADMIN=()=>{const a=(S.cfg.admins||[]).map(x=>x.toLowerCase());return !a.length||a.includes(ME)};
@@ -399,6 +401,7 @@ function listen(){
   on(db.collection("settings").doc("escopos"),"esc",d=>{S.escopos=d.exists?(d.data().list||[]):[];fillScopes()});
   on(db.collection("settings").doc("config"),"cfg",d=>{S.cfg=d.exists?d.data():{};bootCfg(d.exists)});
   on(db.collection("settings").doc("automacao"),"auto",d=>{S.auto=d.exists?d.data():null});
+  on(db.collection("settings").doc("equipe"),"eq",d=>{S.equipe=d.exists?(d.data().membros||[]):[]});
   on(db.collection("alertas").where("resolvido","==",false),"al",sn=>{S.alertas=sn.docs.map(d=>({...d.data(),id:d.id}))});
   on(db.collection("indicacoes"),"ind",sn=>{S.indicacoes=sn.docs.map(d=>({...d.data(),id:d.id}))});
   on(db.collection("respostas").where("processada","==",false),"resp",sn=>{S.respostas=sn.docs.map(d=>({...d.data(),id:d.id}));procAll()});
@@ -499,6 +502,11 @@ const isOpen=r=>!["done","lost","canc"].includes(phase(r));
 const autoOn=()=>{const a=S.auto;return !!(a&&a.ultimaExecucao&&(Date.now()-Date.parse(a.ultimaExecucao))<36*36e5)&&C().automacaoAtiva!==false};
 const quality=p=>{let s=0;if(p.email||p.telefone)s+=15;if(p.email)s+=10;if(p.responsavelEmail)s+=20;if(p.kpi)s+=15;if(p.antes!=null)s+=15;if((p.solucao||"").length>=20)s+=15;if(p.valor)s+=10;return s};
 const surveyUrl=t=>(C().urlPesquisa||BASE+"pesquisa.html")+"?t="+t;
+const MOB=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+/* desktop: WhatsApp Web e Gmail na mesma janela do navegador (evita abrir o app/outro navegador pelo protocolo do sistema) */
+const waLink=(tel,txt="")=>MOB?`https://wa.me/${waNum(tel)}${txt?"?text="+encodeURIComponent(txt):""}`:`https://web.whatsapp.com/send?phone=${waNum(tel)}${txt?"&text="+encodeURIComponent(txt):""}`;
+const mailLink=(to,su,body)=>MOB?`mailto:${to}?subject=${encodeURIComponent(su)}&body=${encodeURIComponent(body)}`:`https://mail.google.com/mail/?authuser=${encodeURIComponent(ME)}&view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(su)}&body=${encodeURIComponent(body)}`;
+const nm=e=>{const m=(S.equipe||[]).find(x=>x.email===e);return m&&m.nome?m.nome:e};
 const waNum=t=>{let d=String(t||"").replace(/\D/g,"");if(d.length===10||d.length===11)d="55"+d;return d};
 
 function gcal(r,p){
@@ -524,7 +532,7 @@ function row(r,p){
   else if(ph==="lost")b=`<button class="mini" data-act="reopen" ${id}>Reabrir</button>`;
   else if(ph!=="canc"){
     if(!r.semPesquisa&&r.tipo!==REC&&ph!=="blocked")b+=`<button class="mini" data-act="send" ${id}>📨 Pesquisa</button>`;
-    if(p.telefone&&(ph==="call"||ph==="expiring"))b+=`<a class="mini" href="https://wa.me/${waNum(p.telefone)}" target="_blank" rel="noopener">💬 WhatsApp</a>`;
+    if(p.telefone&&(ph==="call"||ph==="expiring"))b+=`<a class="mini" href="${esc(waLink(p.telefone))}" target="_blank" rel="noopener">💬 WhatsApp</a>`;
     if(ph==="call"||ph==="expiring")b+=`<button class="mini" data-act="try" ${id}>📞 Sem resposta</button>`;
     if(!r.eventoId)b+=`<a class="mini" href="${esc(gcal(r,p))}" target="_blank" rel="noopener" title="Criar evento manualmente">📅</a>`;
     if(ph==="expiring")b+=`<button class="mini r" data-act="lost" ${id}>Encerrar</button>`;
@@ -559,7 +567,7 @@ function dash(){
     kp("Projetos",S.projects.length,`${S.projects.filter(p=>p.status==="Entregue").length} entregues`);
   const at=m.rm.filter(r=>late(r)||phase(r)==="soon").sort((a,b)=>(late(b)-late(a))||a.dataAgendada.localeCompare(b.dataAgendada));
   $("attnN").textContent=at.length?at.length+" itens":"";
-  $("attn").innerHTML=at.length?at.slice(0,7).map(r=>{const p=P(r.projetoId),[lb,cl]=PH[phase(r)];return`<div class="li"><div><div class="w">${esc(p.titulo)} · ${esc(r.tipo)}</div><div class="d">${esc(p.cliente)} · ${fmt(r.dataAgendada)} · ${esc(p.responsavelEmail||"sem responsável")}</div></div><div style="display:flex;gap:6px;align-items:center"><span class="tag ${cl}">${lb}</span><button class="mini p" data-act="reg" data-id="${r.id}">Registrar</button></div></div>`}).join("")+(at.length>7?`<div class="li"><button class="lnk" data-go="followups">Ver todos os ${at.length}</button></div>`:""):'<div class="empty">Nada pendente. 🎉</div>';
+  $("attn").innerHTML=at.length?at.slice(0,7).map(r=>{const p=P(r.projetoId),[lb,cl]=PH[phase(r)];return`<div class="li"><div><div class="w">${esc(p.titulo)} · ${esc(r.tipo)}</div><div class="d">${esc(p.cliente)} · ${fmt(r.dataAgendada)} · ${esc(p.responsavelEmail?nm(p.responsavelEmail):"sem responsável")}</div></div><div style="display:flex;gap:6px;align-items:center"><span class="tag ${cl}">${lb}</span><button class="mini p" data-act="reg" data-id="${r.id}">Registrar</button></div></div>`}).join("")+(at.length>7?`<div class="li"><button class="lnk" data-go="followups">Ver todos os ${at.length}</button></div>`:""):'<div class="empty">Nada pendente. 🎉</div>';
   const pm=m.np.filter(n=>n>=9).length,dt=m.np.filter(n=>n<=6).length,nu=m.np.length-pm-dt,mx=Math.max(pm,nu,dt,1);
   $("npsN").textContent=m.np.length+" respostas";
   $("npsBox").innerHTML=`<div style="font-size:44px;font-weight:800;letter-spacing:-1px;color:${m.nps==null?"var(--mu)":m.nps>=50?"var(--ok)":m.nps>=0?"var(--wa)":"var(--er)"}">${m.nps==null?"Sem dados":sgn(m.nps)}</div><div class="mu sm" style="margin-bottom:14px">escala de −100 a +100</div>`+
@@ -607,7 +615,7 @@ function openP(id){
   $("mProjT").textContent=id?"Editar projeto":"Novo projeto";
   $("btnDelProj").hidden=!(id&&ADMIN());$("projExtra").hidden=!id;
   $("dlCli").innerHTML=[...new Set(S.projects.map(x=>x.cliente))].map(n=>`<option value="${esc(n)}">`).join("");
-  $("dlResp").innerHTML=[...new Set(S.projects.map(x=>x.responsavelEmail).filter(Boolean))].map(n=>`<option value="${esc(n)}">`).join("");
+  const ativos=S.equipe.filter(m=>m.ativo!==false);$("dlResp").innerHTML=ativos.map(m=>`<option value="${esc(m.email)}">${esc(m.nome||"")}${m.cargo?" · "+esc(m.cargo):""}</option>`).join("")+[...new Set(S.projects.map(x=>x.responsavelEmail).filter(e=>e&&!ativos.some(m=>m.email===e)))].map(n=>`<option value="${esc(n)}">`).join("");
   fillScopes(p?p.tipo:"");
   Object.entries(F).forEach(([k,i])=>{if(k!=="tipo")$(i).value=p?(p[k]??""):k==="status"?"Em andamento":k==="responsavelEmail"?ME:""});
   if(id){projRems(id);$("projHist").innerHTML=(p.historico||[]).slice().reverse().map(h=>`<div>${fmt(h.em)} ${String(h.em).slice(11,16)} · <b>${esc(h.por)}</b> ${esc(h.acao)}</div>`).join("")||(p.atualizadoPor?`<div>Última alteração: ${esc(p.atualizadoPor)} em ${fmt(p.atualizadoEm)}</div>`:"")}
@@ -645,7 +653,7 @@ function fups(){
   $("segR").innerHTML=Object.entries(FS).map(([k,[l,f]])=>`<button class="${RF===k?"on":""}" data-rf="${k}">${l}<b>${vis.filter(f).length}</b></button>`).join("");
   const f=FS[RF][1],g={};vis.forEach(r=>(g[r.projetoId]??=[]).push(r));
   const gs=Object.entries(g).filter(([,rs])=>rs.some(f)).map(([id,rs])=>({p:P(id),rs:rs.sort((a,b)=>a.dataAgendada.localeCompare(b.dataAgendada))})).sort((a,b)=>(b.rs.some(late)-a.rs.some(late))||a.rs[0].dataAgendada.localeCompare(b.rs[0].dataAgendada));
-  $("remList").innerHTML=gs.length?gs.map(({p,rs})=>`<div class="card rg"><div class="rgh"><div><div class="t1">${esc(p.titulo)}</div><div class="t2">${esc(p.cliente)} · ${esc(p.tipo||"Sem escopo")} · ${p.responsavelEmail?esc(p.responsavelEmail):'<span class="tag r">sem responsável</span>'}${p.email?"":' · <span class="tag a">sem e-mail do cliente</span>'}</div></div><button class="mini" data-act="proj" data-id="${p.id}">Abrir projeto</button></div>${rs.map(r=>row(r,p)).join("")}</div>`).join(""):'<div class="card es"><b>Nada por aqui</b>Nenhum ciclo neste filtro.</div>';
+  $("remList").innerHTML=gs.length?gs.map(({p,rs})=>`<div class="card rg"><div class="rgh"><div><div class="t1">${esc(p.titulo)}</div><div class="t2">${esc(p.cliente)} · ${esc(p.tipo||"Sem escopo")} · ${p.responsavelEmail?esc(nm(p.responsavelEmail)):'<span class="tag r">sem responsável</span>'}${p.email?"":' · <span class="tag a">sem e-mail do cliente</span>'}</div></div><button class="mini" data-act="proj" data-id="${p.id}">Abrir projeto</button></div>${rs.map(r=>row(r,p)).join("")}</div>`).join(""):'<div class="card es"><b>Nada por aqui</b>Nenhum ciclo neste filtro.</div>';
 }
 
 /* ---------- pesquisa: link, WhatsApp, e-mail ---------- */
@@ -660,8 +668,8 @@ async function openSend(id){
   try{await ensureSurvey(r)}catch(e){return toast("Não consegui criar o link: "+(e.code||e.message))}
   const link=surveyUrl(r.pesquisaToken),msg=`Olá! Aqui é da PS Júnior 👋 Há ${r.tipo==="1 ano"?"1 ano":r.tipo==="6 meses"?"6 meses":"um tempo"} entregamos o projeto "${p.titulo}". Queremos saber o que mudou na ${p.cliente} desde então — leva 2 minutos: ${link}`;
   $("sSub").textContent=`${p.titulo} · ${r.tipo} · ${p.cliente}`;$("sLink").value=link;
-  $("sBtns").innerHTML=(p.telefone?`<a class="sv" data-envio="whatsapp" href="https://wa.me/${waNum(p.telefone)}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">💬 WhatsApp</a>`:"")+
-    (p.email?`<a class="pl2" data-envio="email-manual" href="mailto:${esc(p.email)}?subject=${encodeURIComponent("2 minutos: o que mudou desde o projeto com a PS Júnior?")}&body=${encodeURIComponent(msg)}">✉️ E-mail</a>`:"")+
+  $("sBtns").innerHTML=(p.telefone?`<a class="sv" data-envio="whatsapp" href="${esc(waLink(p.telefone,msg))}" target="_blank" rel="noopener">💬 WhatsApp</a>`:"")+
+    (p.email?`<a class="pl2" data-envio="email-manual" href="${esc(mailLink(p.email,"2 minutos: o que mudou desde o projeto com a PS Júnior?",msg))}" target="_blank" rel="noopener">✉️ ${MOB?"E-mail":"Gmail"}</a>`:"")+
     (!p.telefone&&!p.email?'<span class="mu">Cadastre e-mail ou telefone do cliente no projeto.</span>':"");
   const h=r.pesquisaEnvios||[];$("sHist").innerHTML=h.length?"Envios: "+h.map(x=>`${fmt(x.data)} (${esc(x.canal)})`).join(" · "):"Nenhum envio ainda.";
   openM("mSend");
@@ -727,7 +735,7 @@ function inds(){
   const st={nova:"Novas",exportada:"Exportadas",contatada:"Contatadas",todas:"Todas"},f=k=>S.indicacoes.filter(i=>k==="todas"||i.status===k);
   $("segI").innerHTML=Object.entries(st).map(([k,l])=>`<button class="${IF===k?"on":""}" data-if="${k}">${l}<b>${f(k).length}</b></button>`).join("");
   const l=f(IF).sort((a,b)=>(b.criadoEm||"").localeCompare(a.criadoEm||""));
-  $("indTable").innerHTML=l.length?`<table class="tl"><tr><th>Indicado</th><th>Empresa</th><th>Telefone</th><th>Indicado por</th><th>Data</th><th>Status</th></tr>${l.map(i=>`<tr><td><b>${esc(i.nome)}</b></td><td>${esc(i.empresa||"—")}</td><td>${i.telefone?`<a href="https://wa.me/${waNum(i.telefone)}" target="_blank" rel="noopener">${esc(i.telefone)}</a>`:"—"}</td><td>${esc(i.indicadoPor)}<div class="mu sm">${esc(i.projeto)}</div></td><td>${fmt(i.criadoEm)}</td><td><select data-ind="${i.id}" style="min-width:120px">${["nova","exportada","contatada"].map(s=>`<option ${i.status===s?"selected":""}>${s}</option>`).join("")}</select></td></tr>`).join("")}</table>`:'<div class="es"><b>Nenhuma indicação aqui</b>Promotores (NPS 9–10) são convidados a indicar contatos na pesquisa.</div>';
+  $("indTable").innerHTML=l.length?`<table class="tl"><tr><th>Indicado</th><th>Empresa</th><th>Telefone</th><th>Indicado por</th><th>Data</th><th>Status</th></tr>${l.map(i=>`<tr><td><b>${esc(i.nome)}</b></td><td>${esc(i.empresa||"—")}</td><td>${i.telefone?`<a href="${esc(waLink(i.telefone))}" target="_blank" rel="noopener">${esc(i.telefone)}</a>`:"—"}</td><td>${esc(i.indicadoPor)}<div class="mu sm">${esc(i.projeto)}</div></td><td>${fmt(i.criadoEm)}</td><td><select data-ind="${i.id}" style="min-width:120px">${["nova","exportada","contatada"].map(s=>`<option ${i.status===s?"selected":""}>${s}</option>`).join("")}</select></td></tr>`).join("")}</table>`:'<div class="es"><b>Nenhuma indicação aqui</b>Promotores (NPS 9–10) são convidados a indicar contatos na pesquisa.</div>';
 }
 $("indTable").onchange=e=>{const s=e.target.closest("[data-ind]");if(s)db.collection("indicacoes").doc(s.dataset.ind).update({status:s.value,atualizadoPor:ME,atualizadoEm:nowIso()}).catch(x=>toast("Erro: "+(x.code||x.message)))};
 $("btnExpInd").onclick=()=>{
@@ -740,15 +748,41 @@ $("btnExpInd").onclick=()=>{
 
 /* ---------- EQUIPE ---------- */
 function team(){
-  const g={};
-  S.projects.forEach(p=>{const k=p.responsavelEmail||"(sem responsável)";(g[k]??={k,proj:0,venc:0,conc:0,perd:0,atr:0,dias:[],cli:0}).proj++});
+  members();
+  const g={},mk=k=>g[k]??={k,proj:0,venc:0,conc:0,perd:0,atr:0,dias:[],cli:0,abertos:0};
+  S.equipe.filter(m=>m.ativo!==false).forEach(m=>mk(m.email));
+  S.projects.forEach(p=>{mk(p.responsavelEmail||"(sem responsável)").proj++});
   S.reminders.forEach(r=>{const p=P(r.projetoId);if(!p||r.tipo===REC)return;const x=g[p.responsavelEmail||"(sem responsável)"];
-    if(late(r))x.atr++;if(diff(r.dataAgendada)>0||p.status!=="Entregue")return;x.venc++;
+    if(isOpen(r))x.abertos++;if(late(r))x.atr++;if(diff(r.dataAgendada)>0||p.status!=="Entregue")return;x.venc++;
     if(r.status==="Concluído"){x.conc++;if(r.concluidoEm)x.dias.push(Math.max(0,Math.round((parse(r.concluidoEm)-parse(r.dataAgendada))/864e5)));if(r.respondidoPor==="cliente")x.cli++}
     if(r.status==="Perdido")x.perd++});
   const l=Object.values(g).sort((a,b)=>b.atr-a.atr||b.venc-a.venc);
-  $("teamTable").innerHTML=l.length?`<table><tr><th>Responsável</th><th>Projetos</th><th>Ciclos vencidos</th><th>Concluídos</th><th>Perdidos</th><th>Em atraso agora</th><th>Taxa de conclusão</th><th>Tempo médio até resultado</th><th>Via pesquisa</th></tr>${l.map(x=>{const t=pct(x.conc,x.venc);return`<tr><td><b>${esc(x.k)}</b></td><td>${x.proj}</td><td>${x.venc}</td><td>${x.conc}</td><td>${x.perd}</td><td>${x.atr?`<span class="tag r">${x.atr}</span>`:'<span class="tag g">0</span>'}</td><td><div style="display:flex;gap:8px;align-items:center;justify-content:flex-end"><div class="gb" style="width:70px"><i style="width:${t||0}%"></i></div><b>${t==null?"—":t+"%"}</b></div></td><td>${x.dias.length?Math.round(x.dias.reduce((a,b)=>a+b,0)/x.dias.length)+" dias":"—"}</td><td>${x.conc?pct(x.cli,x.conc)+"%":"—"}</td></tr>`}).join("")}</table><div class="lg">Taxa de conclusão = ciclos com resultado ÷ ciclos já vencidos de projetos entregues. Ciclos de recuperação não entram.</div>`:'<div class="es"><b>Sem dados</b>Cadastre projetos com responsável.</div>';
+  $("teamTable").innerHTML=l.length?`<table><tr><th>Responsável</th><th>Projetos</th><th>Ciclos vencidos</th><th>Concluídos</th><th>Perdidos</th><th>Em atraso agora</th><th>Taxa de conclusão</th><th>Tempo médio até resultado</th><th>Via pesquisa</th></tr>${l.map(x=>{const t=pct(x.conc,x.venc);return`<tr><td><b>${esc(nm(x.k))}</b>${nm(x.k)!==x.k?`<div class="mu sm">${esc(x.k)}</div>`:""}${(S.equipe.find(m=>m.email===x.k)||{}).ativo===false&&x.abertos?`<div><span class="tag r">inativo com ${x.abertos} ciclo(s) aberto(s) — troque o responsável</span></div>`:""}</td><td>${x.proj}</td><td>${x.venc}</td><td>${x.conc}</td><td>${x.perd}</td><td>${x.atr?`<span class="tag r">${x.atr}</span>`:'<span class="tag g">0</span>'}</td><td><div style="display:flex;gap:8px;align-items:center;justify-content:flex-end"><div class="gb" style="width:70px"><i style="width:${t||0}%"></i></div><b>${t==null?"—":t+"%"}</b></div></td><td>${x.dias.length?Math.round(x.dias.reduce((a,b)=>a+b,0)/x.dias.length)+" dias":"—"}</td><td>${x.conc?pct(x.cli,x.conc)+"%":"—"}</td></tr>`}).join("")}</table><div class="lg">Taxa de conclusão = ciclos com resultado ÷ ciclos já vencidos de projetos entregues. Ciclos de recuperação não entram.</div>`:'<div class="es"><b>Sem dados</b>Cadastre projetos com responsável.</div>';
 }
+
+/* ---------- EQUIPE: cadastro de membros ---------- */
+const saveEq=()=>db.collection("settings").doc("equipe").set({membros:S.equipe,atualizadoPor:ME,atualizadoEm:nowIso()}).then(()=>toast("Equipe salva.")).catch(e=>toast("Erro: "+(e.code||e.message)));
+function members(){
+  const cnt=e=>S.projects.filter(p=>p.responsavelEmail===e&&p.status!=="Cancelado").length;
+  const soltos=[...new Set(S.projects.map(p=>p.responsavelEmail).filter(e=>e&&!S.equipe.some(m=>m.email===e)))];
+  const l=[...S.equipe].sort((a,b)=>(b.ativo!==false)-(a.ativo!==false)||(a.nome||a.email).localeCompare(b.nome||b.email));
+  $("teamMembers").innerHTML=`<h2 class="st">Membros <small>${S.equipe.filter(m=>m.ativo!==false).length} ativos</small></h2>
+  ${soltos.length?`<div class="warn b"><span>Encontrei <b>${soltos.length}</b> responsável(is) nos projetos que não estão cadastrados: ${soltos.map(esc).join(", ")}</span><button class="mini" data-act="eqimport">Adicionar todos</button></div>`:""}
+  ${l.length?`<table class="tl"><tr><th>Nome</th><th>E-mail</th><th>Cargo / área</th><th>Projetos</th><th>Ativo</th><th></th></tr>${l.map(m=>`<tr data-mem="${esc(m.email)}"${m.ativo===false?' style="opacity:.55"':""}>
+    <td><input data-f="nome" value="${esc(m.nome||"")}" placeholder="Nome"></td><td class="mu">${esc(m.email)}</td>
+    <td><input data-f="cargo" value="${esc(m.cargo||"")}" placeholder="Ex.: Diretor de Projetos"></td><td>${cnt(m.email)}</td>
+    <td><input type="checkbox" data-f="ativo" ${m.ativo!==false?"checked":""}></td><td><button class="mini r" data-act="eqdel" data-id="${esc(m.email)}">Remover</button></td></tr>`).join("")}</table>`:'<div class="empty">Nenhum membro cadastrado ainda.</div>'}
+  <div class="f3" style="grid-template-columns:1fr 1.2fr 1fr auto;margin-top:14px;align-items:center"><input id="eqNome" placeholder="Nome"><input id="eqEmail" type="email" placeholder="nome@${DOM}"><input id="eqCargo" placeholder="Cargo / área"><button class="sv" data-act="eqadd">＋ Adicionar</button></div>
+  <div class="hint">Membros ativos aparecem como sugestão no campo "Responsável" dos projetos. Ao desativar alguém, os projetos continuam com ele até você trocar o responsável.</div>`;
+}
+$("teamMembers").addEventListener("change",e=>{const tr=e.target.closest("[data-mem]"),f=e.target.dataset.f;if(!tr||!f)return;const m=S.equipe.find(x=>x.email===tr.dataset.mem);if(!m)return;
+  m[f]=f==="ativo"?e.target.checked:e.target.value.trim();
+  if(f==="ativo"&&!m.ativo){const n=S.reminders.filter(r=>isOpen(r)&&(P(r.projetoId)||{}).responsavelEmail===m.email).length;if(n)toast(`${nm(m.email)} tem ${n} ciclo(s) aberto(s). Troque o responsável desses projetos.`)}
+  saveEq();renderAll()});
+function eqAdd(){const e=$("eqEmail").value.trim().toLowerCase(),n=$("eqNome").value.trim();
+  if(!/^[^@\s]+@[^@\s]+$/.test(e))return toast("Informe um e-mail válido.");if(!e.endsWith("@"+DOM)&&!confirm(`${e} não é @${DOM}. Essa pessoa não conseguirá entrar no app. Adicionar mesmo assim?`))return;
+  if(S.equipe.some(m=>m.email===e))return toast("Esse e-mail já está na equipe.");
+  S.equipe=[...S.equipe,{email:e,nome:n,cargo:$("eqCargo").value.trim(),ativo:true,desde:today()}];saveEq();renderAll()}
 
 /* ---------- CONFIGURAÇÕES ---------- */
 function cfgPage(){
@@ -841,7 +875,10 @@ document.addEventListener("click",e=>{
     case"reopen":r.status="Pendente";r.reabertoEm=today();r.pesquisaEnvios=[];r.avisoLigacaoEm=null;save();renderAll();toast("Ciclo reaberto.");break;
     case"resolve":db.collection("alertas").doc(id).update({resolvido:true,resolvidoPor:ME,resolvidoEm:nowIso()}).catch(x=>toast("Erro: "+(x.code||x.message)));break;
     case"copycase":{const p=P(r.projetoId);navigator.clipboard.writeText(caseText(r,p)).then(()=>toast("Texto do case copiado."));break}
-    case"savecfg":saveCfg();break;case"csv":expCsv();break;case"json":expJson();break;
+    case"savecfg":saveCfg();break;
+    case"eqadd":eqAdd();break;
+    case"eqimport":{const add=[...new Set(S.projects.map(p=>p.responsavelEmail).filter(e=>e&&!S.equipe.some(m=>m.email===e)))].map(e=>({email:e,nome:"",cargo:"",ativo:true,desde:today()}));S.equipe=[...S.equipe,...add];saveEq();renderAll();break}
+    case"eqdel":{const n=S.projects.filter(p=>p.responsavelEmail===id&&p.status!=="Cancelado").length;if(!confirm(n?`${nm(id)} é responsável por ${n} projeto(s). Eles continuam com o e-mail dele até você trocar. Remover do cadastro? (Dica: desativar mantém o histórico.)`:`Remover ${nm(id)} da equipe?`))return;S.equipe=S.equipe.filter(m=>m.email!==id);saveEq();renderAll();break}case"csv":expCsv();break;case"json":expJson();break;
     case"impjson":$("fileJson").click();break;case"impsheet":$("fileSheet").click();break;
     case"rmex":if(confirm("Remover os projetos de exemplo e seus ciclos?")){const ex=new Set(S.projects.filter(p=>p.exemplo).map(p=>p.id));S.projects=S.projects.filter(p=>!ex.has(p.id));S.reminders=S.reminders.filter(r=>!ex.has(r.projetoId));save();renderAll()}break;
   }
